@@ -652,8 +652,8 @@ Remember: You're not a therapist or counselor - you're an informational support 
             fontFamily: '"Inter", sans-serif'
           }}>
             {language === 'en'
-              ? 'For immediate crisis support, call (877) 611-2272'
-              : 'Para apoyo inmediato en crisis, llama al (877) 611-2272'}
+              ? 'For immediate crisis support, call 911'
+              : 'Para apoyo inmediato en crisis, llama al 911'}
           </p>
         </div>
       </div>
