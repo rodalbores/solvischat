@@ -3,7 +3,7 @@ export async function onRequestPost(context) {
   try {
     const { system, messages } = await context.request.json();
 
-    const apiKey = context.env.ANTHROPIC_API_KEY;
+    const apiKey = context.env.GEMINI_API_KEY;
     
     if (!apiKey) {
       return new Response(JSON.stringify({ 
@@ -14,20 +14,45 @@ export async function onRequestPost(context) {
       });
     }
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        system: system,
-        messages: messages
-      })
-    });
+    // Convert messages to Gemini format
+    const geminiContents = [];
+    
+    // Add system instruction as first user message if provided
+    if (system) {
+      geminiContents.push({
+        role: 'user',
+        parts: [{ text: `System instruction: ${system}\n\nPlease follow the above instruction for all responses.` }]
+      });
+      geminiContents.push({
+        role: 'model',
+        parts: [{ text: 'Understood. I will follow these instructions.' }]
+      });
+    }
+    
+    // Convert chat messages
+    for (const msg of messages) {
+      geminiContents.push({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: msg.content }]
+      });
+    }
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: geminiContents,
+          generationConfig: {
+            maxOutputTokens: 1000,
+            temperature: 0.7,
+          }
+        })
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -40,7 +65,16 @@ export async function onRequestPost(context) {
     }
 
     const data = await response.json();
-    return new Response(JSON.stringify(data), {
+    
+    // Convert Gemini response to match expected format
+    const geminiResponse = {
+      content: [{
+        type: 'text',
+        text: data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response generated'
+      }]
+    };
+    
+    return new Response(JSON.stringify(geminiResponse), {
       headers: { 'Content-Type': 'application/json' }
     });
 

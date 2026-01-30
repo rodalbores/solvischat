@@ -27,37 +27,71 @@ app.post('/api/chat', async (req, res) => {
   try {
     const { system, messages } = req.body;
 
-    if (!process.env.ANTHROPIC_API_KEY) {
+    if (!process.env.GEMINI_API_KEY) {
       return res.status(500).json({ 
-        error: 'API key not configured. Please set ANTHROPIC_API_KEY environment variable.' 
+        error: 'API key not configured. Please set GEMINI_API_KEY environment variable.' 
       });
     }
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        system: system,
-        messages: messages
-      })
-    });
+    // Convert messages to Gemini format
+    const geminiContents = [];
+    
+    // Add system instruction as first user message if provided
+    if (system) {
+      geminiContents.push({
+        role: 'user',
+        parts: [{ text: `System instruction: ${system}\n\nPlease follow the above instruction for all responses.` }]
+      });
+      geminiContents.push({
+        role: 'model',
+        parts: [{ text: 'Understood. I will follow these instructions.' }]
+      });
+    }
+    
+    // Convert chat messages
+    for (const msg of messages) {
+      geminiContents.push({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: msg.content }]
+      });
+    }
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: geminiContents,
+          generationConfig: {
+            maxOutputTokens: 1000,
+            temperature: 0.7,
+          }
+        })
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error('Anthropic API error:', response.status, errorData);
+      console.error('Gemini API error:', response.status, errorData);
       return res.status(response.status).json({ 
         error: errorData.error?.message || 'Failed to get response from AI' 
       });
     }
 
     const data = await response.json();
-    res.json(data);
+    
+    // Convert Gemini response to match expected format
+    const geminiResponse = {
+      content: [{
+        type: 'text',
+        text: data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response generated'
+      }]
+    };
+    
+    res.json(geminiResponse);
 
   } catch (error) {
     console.error('Server error:', error);
@@ -82,7 +116,7 @@ if (process.env.NODE_ENV === 'production') {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📍 API endpoint: http://localhost:${PORT}/api/chat`);
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.warn('⚠️  Warning: ANTHROPIC_API_KEY not set. Chat functionality will not work.');
+  if (!process.env.GEMINI_API_KEY) {
+    console.warn('⚠️  Warning: GEMINI_API_KEY not set. Chat functionality will not work.');
   }
 });

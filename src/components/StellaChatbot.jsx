@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Heart, Languages } from 'lucide-react';
 
-// FAQ Knowledge Base for offline responses
-const faqData = [
+// FAQ Knowledge Base for offline responses - English
+const faqDataEn = [
   {
     keywords: ['what is', 'about', 'casa de la familia', 'cdlf', 'organization', 'who are you'],
     response: "Casa de la Familia (CDLF) is a 501(c)(3) non-profit organization dedicated to transforming victims of psychological trauma into survivors through mental health services. We were founded in 1996 by clinical psychologist Dr. Ana Nogales, and we're committed to providing compassionate, culturally sensitive care to those who need it most."
@@ -142,9 +142,240 @@ const faqData = [
   }
 ];
 
+// FAQ Knowledge Base - Spanish
+const faqDataEs = [
+  {
+    keywords: ['qué es', 'sobre', 'casa de la familia', 'cdlf', 'organización', 'quién eres', 'quiénes son'],
+    response: "Casa de la Familia (CDLF) es una organización sin fines de lucro 501(c)(3) dedicada a transformar víctimas de trauma psicológico en sobrevivientes a través de servicios de salud mental. Fuimos fundados en 1996 por la psicóloga clínica Dra. Ana Nogales, y estamos comprometidos a brindar atención compasiva y culturalmente sensible a quienes más lo necesitan."
+  },
+  {
+    keywords: ['fundadora', 'quién fundó', 'empezó', 'dr. nogales', 'dra. nogales', 'ana nogales'],
+    response: "Casa de la Familia fue fundada en 1996 por la Dra. Ana Nogales, una psicóloga clínica dedicada a servir a sobrevivientes de trauma. Bajo su liderazgo, hemos crecido para servir a todo California con servicios integrales de salud mental."
+  },
+  {
+    keywords: ['misión', 'propósito', 'objetivo', 'meta'],
+    response: "Nuestra misión es proporcionar servicios psicológicos y psiquiátricos integrales y culturalmente sensibles a sobrevivientes de trauma, particularmente en comunidades desatendidas. Creemos que todos merecen acceso a atención de salud mental de calidad, sin importar su situación financiera."
+  },
+  {
+    keywords: ['costo', 'precio', 'cuánto', 'tarifa', 'pago', 'costear', 'caro', 'gratis', 'gratuito'],
+    response: "Nuestros servicios se ofrecen a bajo costo o sin costo, dependiendo de tu situación. Creemos que las barreras financieras nunca deben impedir que alguien obtenga la ayuda que necesita. Por favor llámanos al (877) 611-2272 para hablar sobre tu situación - estamos aquí para ayudarte."
+  },
+  {
+    keywords: ['idioma', 'español', 'inglés', 'bilingüe', 'coreano'],
+    response: "Todos nuestros servicios están disponibles en inglés y español. Todo nuestro personal es bilingüe y bicultural, asegurando que el idioma nunca sea una barrera para recibir atención. ¡Estamos aquí para ayudarte!"
+  },
+  {
+    keywords: ['área', 'servir', 'ubicación', 'dónde', 'california', 'región'],
+    response: "Después de casi 30 años de crecimiento, ¡Casa de la Familia ahora sirve a todo California! Tenemos oficinas físicas en Santa Ana, Este de Los Ángeles y San Juan Capistrano, y también ofrecemos servicios virtuales para que puedas recibir atención desde cualquier parte del estado."
+  },
+  {
+    keywords: ['virtual', 'en línea', 'remoto', 'telesalud', 'en persona', 'visita'],
+    response: "Ofrecemos servicios tanto en persona como virtuales para satisfacer tus necesidades. Puedes visitar una de nuestras oficinas en Santa Ana, Este de Los Ángeles o San Juan Capistrano, o recibir atención a través de nuestra plataforma de telesalud segura desde la comodidad de tu hogar."
+  },
+  {
+    keywords: ['oficina', 'dirección', 'santa ana', 'los angeles', 'san juan capistrano'],
+    response: "Tenemos tres ubicaciones convenientes:\n\n📍 Santa Ana: 1650 East 4th Street, Santa Ana, CA 92701\n📍 Este de Los Ángeles: 4609 East Cesar Chavez Ave, Los Angeles, CA 90022\n📍 San Juan Capistrano: 27221 D Ortega HWY, San Juan Capistrano, CA 92675\n\nLlama al (877) 611-2272 para programar una cita en cualquier ubicación."
+  },
+  {
+    keywords: ['edad', 'niños', 'jóvenes', 'adolescentes', 'adultos', 'familia', 'quién puede'],
+    response: "Proporcionamos servicios de consejería para todas las edades - niños, jóvenes, adultos y familias. Nuestros terapeutas se especializan en trabajar con personas en cada etapa de la vida, y ofrecemos opciones de terapia individual y familiar."
+  },
+  {
+    keywords: ['tipo', 'consejería', 'terapia', 'servicios', 'qué ofrecen'],
+    response: "Ofrecemos una variedad de servicios incluyendo:\n\n• Terapia individual\n• Terapia familiar\n• Grupos de apoyo empoderadores\n• Intervención en crisis\n• Atención enfocada en trauma\n• Apoyo para violencia doméstica\n• Servicios para agresión sexual\n• Evaluaciones de inmigración\n\nTodos los servicios son proporcionados por profesionales licenciados en inglés y español."
+  },
+  {
+    keywords: ['violencia doméstica', 'abuso', 'dart', 'violento', 'pareja'],
+    response: "Sí, ofrecemos apoyo especializado para sobrevivientes de violencia doméstica. Nuestro programa DART (Equipo de Respuesta al Abuso Doméstico) empareja consejeros certificados con unidades policiales especialmente entrenadas para intervención inmediata en crisis. Proporcionamos apoyo seguro y confidencial para ayudarte en este momento difícil. Si estás en peligro inmediato, por favor llama al 911. De lo contrario, contáctanos al (877) 611-2272."
+  },
+  {
+    keywords: ['trauma', 'tept', 'traumático'],
+    response: "La recuperación del trauma está en el corazón de lo que hacemos. Proporcionamos atención especializada e informada sobre trauma para sobrevivientes de diversas experiencias traumáticas, incluyendo violencia doméstica, agresión sexual y otros traumas psicológicos. Nuestros terapeutas compasivos están aquí para apoyar tu camino de sanación."
+  },
+  {
+    keywords: ['agresión sexual', 'violación', 'abuso sexual'],
+    response: "Proporcionamos atención especializada y compasiva para sobrevivientes de agresión sexual. Nuestros consejeros capacitados ofrecen un espacio seguro y confidencial para la sanación. No estás solo/a, y lo que pasó no es tu culpa. Por favor llámanos al (877) 611-2272 - estamos aquí para apoyarte."
+  },
+  {
+    keywords: ['inmigración', 'evaluación', 'legal', 'visa', 'asilo'],
+    response: "Sí, proporcionamos consejería legal e informes de evaluación de inmigración. Estas evaluaciones psicológicas pueden apoyar tu caso de inmigración. También ofrecemos informes expeditos que se pueden entregar dentro de 48 horas por una tarifa adicional. Llama al (877) 611-2272 para obtener más información sobre este servicio."
+  },
+  {
+    keywords: ['48 horas', 'expedito', 'rápido', 'urgente', 'evaluación rápida'],
+    response: "¡Sí! Ofrecemos informes de evaluación de inmigración expeditos que se pueden entregar dentro de 48 horas por una tarifa adicional. Este servicio está disponible para quienes tienen plazos urgentes para sus casos de inmigración. Llama al (877) 611-2272 para coordinar una evaluación expedita."
+  },
+  {
+    keywords: ['amor sin violencia', 'latina power', '13 razones', 'programa'],
+    response: "Ofrecemos varios programas especializados incluyendo:\n\n• Amor Sin Violencia - Apoyo para violencia doméstica\n• Latina Power! - Programa de empoderamiento\n• 13 Reasons Why - Salud mental juvenil\n• DART - Equipo de intervención en crisis\n• CalVCB - Asistencia de compensación a víctimas\n\nLlama al (877) 611-2272 para saber qué programa es adecuado para ti."
+  },
+  {
+    keywords: ['capacitación', 'profesional', 'certificación', 'entrenamiento violencia doméstica'],
+    response: "¡Sí! Ofrecemos programas de capacitación profesional incluyendo:\n\n• Capacitación de 40 horas en Violencia Doméstica\n• Capacitación de 12 horas en Violencia Doméstica\n\nEstas certificaciones son valiosas para profesionales que trabajan en campos relacionados. Contáctanos al (877) 611-2272 para horarios de capacitación e inscripción."
+  },
+  {
+    keywords: ['contacto', 'teléfono', 'llamar', 'comunicarse', 'número', 'ayuda'],
+    response: "Puedes comunicarte con Casa de la Familia al (877) 611-2272. Nuestro personal está listo para ayudarte a acceder a los servicios que necesitas. No dudes en llamar - dar este paso es un acto de valentía, y estamos aquí para apoyarte."
+  },
+  {
+    keywords: ['portal del paciente', 'administrar', 'cuenta', 'iniciar sesión'],
+    response: "¡Sí! Los pacientes actuales pueden administrar su atención a través de nuestro Portal del Paciente en nuestro sitio web casadelafamilia.org. El portal te permite acceder a tu información y mantenerte conectado con tu equipo de atención."
+  },
+  {
+    keywords: ['donar', 'apoyar', 'dar', 'contribución', 'ayudar organización'],
+    response: "¡Gracias por querer apoyar nuestra misión! Puedes ayudar haciendo una donación, que financia asistencia de emergencia y terapia para quienes lo necesitan. También puedes ofrecer tu tiempo como voluntario. Visita casadelafamilia.org o llama al (877) 611-2272 para conocer formas de contribuir."
+  },
+  {
+    keywords: ['voluntario', 'carrera', 'trabajo', 'empleo', 'pasante', 'verano'],
+    response: "¡Ofrecemos oportunidades para carreras en consejería y posiciones de voluntariado de verano! Si te apasiona ayudar a sobrevivientes de trauma y quieres hacer una diferencia, nos encantaría saber de ti. Visita nuestro sitio web casadelafamilia.org o llama al (877) 611-2272 para conocer las oportunidades actuales."
+  },
+  {
+    keywords: ['crisis', 'emergencia', 'inmediato', 'urgente', 'peligro', 'suicidio', 'daño'],
+    response: "Si estás en peligro inmediato, por favor llama al 911 de inmediato.\n\nPara apoyo en crisis, puedes comunicarte con Casa de la Familia al (877) 611-2272.\n\nLínea Nacional de Prevención del Suicidio: 988\n\nTú importas, y hay ayuda disponible. Por favor comunícate - no tienes que enfrentar esto solo/a."
+  },
+  {
+    keywords: ['hola', 'buenos días', 'buenas tardes', 'buenas noches', 'saludos'],
+    response: "¡Hola! Soy Stella, tu compañera de apoyo virtual de Casa de la Familia. Estoy aquí para ayudarte a conocer nuestros servicios y conectarte con el apoyo que necesitas. ¿En qué puedo ayudarte hoy?"
+  },
+  {
+    keywords: ['gracias', 'agradezco', 'te lo agradezco'],
+    response: "¡De nada! Recuerda, comunicarse requiere valentía, y es un honor poder apoyarte. Si tienes otras preguntas o necesitas hablar con alguien, por favor llámanos al (877) 611-2272. Cuídate mucho. 💜"
+  }
+];
+
+// FAQ Knowledge Base - Korean
+const faqDataKo = [
+  {
+    keywords: ['무엇', '에 대해', 'casa de la familia', 'cdlf', '단체', '누구', '소개'],
+    response: "Casa de la Familia (CDLF)는 정신건강 서비스를 통해 심리적 트라우마 피해자를 생존자로 변화시키는 데 전념하는 501(c)(3) 비영리 단체입니다. 1996년 임상 심리학자 Ana Nogales 박사에 의해 설립되었으며, 도움이 가장 필요한 분들에게 따뜻하고 문화적으로 민감한 케어를 제공하기 위해 최선을 다하고 있습니다."
+  },
+  {
+    keywords: ['설립자', '누가 설립', '시작', 'nogales 박사', 'ana nogales'],
+    response: "Casa de la Familia는 1996년 트라우마 생존자를 돕는 데 헌신한 임상 심리학자 Ana Nogales 박사에 의해 설립되었습니다. 그녀의 리더십 아래, 우리는 캘리포니아 전역에 종합적인 정신건강 서비스를 제공하도록 성장했습니다."
+  },
+  {
+    keywords: ['사명', '목적', '목표'],
+    response: "우리의 사명은 트라우마 생존자, 특히 소외된 지역사회의 분들에게 종합적이고 문화적으로 민감한 심리 및 정신과 서비스를 제공하는 것입니다. 우리는 재정 상황에 관계없이 모든 사람이 양질의 정신건강 케어를 받을 자격이 있다고 믿습니다."
+  },
+  {
+    keywords: ['비용', '가격', '얼마', '요금', '지불', '부담', '비싼', '무료'],
+    response: "우리의 서비스는 상황에 따라 저렴하거나 무료로 제공됩니다. 우리는 재정적 장벽이 도움을 받는 것을 막아서는 안 된다고 믿습니다. (877) 611-2272로 전화하여 상황을 상담해 주세요 - 도와드리겠습니다."
+  },
+  {
+    keywords: ['언어', '스페인어', '영어', '이중 언어', '한국어'],
+    response: "모든 서비스는 영어와 스페인어로 제공됩니다. 우리 직원 전원이 이중 언어와 이중 문화를 갖추고 있어 언어가 케어를 받는 데 장벽이 되지 않습니다. 한국어로 상담이 필요하시면 (877) 611-2272로 연락해 주세요!"
+  },
+  {
+    keywords: ['지역', '서비스', '위치', '어디', '캘리포니아'],
+    response: "거의 30년간의 성장 끝에 Casa de la Familia는 이제 캘리포니아 전역을 서비스합니다! Santa Ana, East Los Angeles, San Juan Capistrano에 사무실이 있으며, 주 어디서나 케어를 받을 수 있는 화상 서비스도 제공합니다."
+  },
+  {
+    keywords: ['화상', '온라인', '원격', '원격의료', '대면', '방문'],
+    response: "귀하의 필요에 맞게 대면 및 화상 서비스를 모두 제공합니다. Santa Ana, East Los Angeles 또는 San Juan Capistrano 사무실을 방문하시거나, 안전한 원격의료 플랫폼을 통해 집에서 편안하게 케어를 받으실 수 있습니다."
+  },
+  {
+    keywords: ['사무실', '주소', 'santa ana', 'los angeles', 'san juan capistrano'],
+    response: "편리한 세 곳에 위치해 있습니다:\n\n📍 Santa Ana: 1650 East 4th Street, Santa Ana, CA 92701\n📍 East Los Angeles: 4609 East Cesar Chavez Ave, Los Angeles, CA 90022\n📍 San Juan Capistrano: 27221 D Ortega HWY, San Juan Capistrano, CA 92675\n\n(877) 611-2272로 전화하여 예약하세요."
+  },
+  {
+    keywords: ['나이', '아이', '청소년', '성인', '가족', '누가'],
+    response: "모든 연령대 - 아이, 청소년, 성인, 가족을 위한 상담 서비스를 제공합니다. 우리 치료사들은 삶의 모든 단계에서 사람들과 함께 일하는 것을 전문으로 하며, 개인 및 가족 치료 옵션을 모두 제공합니다."
+  },
+  {
+    keywords: ['유형', '상담', '치료', '서비스', '제공'],
+    response: "다양한 서비스를 제공합니다:\n\n• 개인 치료\n• 가족 치료\n• 지지 그룹\n• 위기 개입\n• 트라우마 중심 케어\n• 가정폭력 지원\n• 성폭력 서비스\n• 이민 평가\n\n모든 서비스는 면허를 가진 전문가가 영어와 스페인어로 제공합니다."
+  },
+  {
+    keywords: ['가정폭력', '학대', 'dart', '폭력', '파트너'],
+    response: "네, 가정폭력 생존자를 위한 전문 지원을 제공합니다. DART(가정폭력 대응팀) 프로그램은 인증된 상담사와 특별 훈련된 경찰 부대를 짝지어 즉각적인 위기 개입을 제공합니다. 이 어려운 시기에 안전하고 비밀이 보장된 지원을 제공합니다. 즉각적인 위험에 처해 있다면 911에 전화하세요. 그렇지 않으면 (877) 611-2272로 연락하세요."
+  },
+  {
+    keywords: ['트라우마', 'ptsd', '외상'],
+    response: "트라우마 회복은 우리가 하는 일의 핵심입니다. 가정폭력, 성폭력 및 기타 심리적 트라우마를 포함한 다양한 트라우마 경험의 생존자들을 위해 전문적이고 트라우마 정보에 기반한 케어를 제공합니다. 우리의 따뜻한 치료사들이 당신의 치유 여정을 지원합니다."
+  },
+  {
+    keywords: ['성폭력', '강간', '성적 학대'],
+    response: "성폭력 생존자를 위한 전문적이고 따뜻한 케어를 제공합니다. 훈련된 상담사들이 치유를 위한 안전하고 비밀이 보장된 공간을 제공합니다. 당신은 혼자가 아니며, 일어난 일은 당신의 잘못이 아닙니다. (877) 611-2272로 전화해 주세요 - 지원해 드리겠습니다."
+  },
+  {
+    keywords: ['이민', '평가', '법률', '비자', '망명'],
+    response: "네, 법률 상담과 이민 평가 보고서를 제공합니다. 이 심리 평가는 이민 케이스를 지원할 수 있습니다. 추가 비용으로 48시간 이내에 전달 가능한 신속 보고서도 제공합니다. 이 서비스에 대해 자세히 알아보려면 (877) 611-2272로 전화하세요."
+  },
+  {
+    keywords: ['48시간', '신속', '빠른', '긴급', '빠른 평가'],
+    response: "네! 추가 비용으로 48시간 이내에 전달되는 신속 이민 평가 보고서를 제공합니다. 이 서비스는 이민 케이스에 긴급한 마감 기한이 있는 분들을 위해 제공됩니다. 신속 평가를 예약하려면 (877) 611-2272로 전화하세요."
+  },
+  {
+    keywords: ['프로그램', 'amor sin violencia', 'latina power'],
+    response: "여러 전문 프로그램을 제공합니다:\n\n• Amor Sin Violencia - 가정폭력 지원\n• Latina Power! - 역량 강화 프로그램\n• 13 Reasons Why - 청소년 정신건강\n• DART - 위기 개입 팀\n• CalVCB - 피해자 보상 지원\n\n어떤 프로그램이 적합한지 알아보려면 (877) 611-2272로 전화하세요."
+  },
+  {
+    keywords: ['교육', '전문가', '자격증', '가정폭력 교육'],
+    response: "네! 전문 교육 프로그램을 제공합니다:\n\n• 40시간 가정폭력 교육\n• 12시간 가정폭력 교육\n\n이 자격증은 관련 분야에서 일하는 전문가들에게 유용합니다. 교육 일정 및 등록에 대해 (877) 611-2272로 문의하세요."
+  },
+  {
+    keywords: ['연락', '전화', '번호', '도움'],
+    response: "(877) 611-2272로 Casa de la Familia에 연락하실 수 있습니다. 필요한 서비스에 접근할 수 있도록 도와드릴 준비가 되어 있습니다. 전화하는 것을 주저하지 마세요 - 이 한 걸음은 용기 있는 행동이며, 지원해 드리겠습니다."
+  },
+  {
+    keywords: ['환자 포털', '관리', '계정', '로그인'],
+    response: "네! 현재 환자들은 casadelafamilia.org 웹사이트의 환자 포털을 통해 케어를 관리할 수 있습니다. 포털을 통해 정보에 접근하고 케어 팀과 연결 상태를 유지할 수 있습니다."
+  },
+  {
+    keywords: ['기부', '지원', '후원', '기여', '단체 돕기'],
+    response: "우리의 사명을 지원해 주셔서 감사합니다! 기부를 통해 도움이 필요한 분들에게 긴급 지원과 치료를 제공할 수 있습니다. 자원봉사로 시간을 기부할 수도 있습니다. casadelafamilia.org를 방문하거나 (877) 611-2272로 전화하여 기부 방법을 알아보세요."
+  },
+  {
+    keywords: ['자원봉사', '직업', '일자리', '취업', '인턴', '여름'],
+    response: "상담 직업과 여름 자원봉사 기회를 제공합니다! 트라우마 생존자를 돕는 것에 열정이 있고 변화를 만들고 싶다면, 연락해 주세요. casadelafamilia.org 웹사이트를 방문하거나 (877) 611-2272로 전화하여 현재 기회에 대해 알아보세요."
+  },
+  {
+    keywords: ['위기', '응급', '즉각', '긴급', '위험', '자살', '해', '다치'],
+    response: "즉각적인 위험에 처해 있다면 즉시 911에 전화하세요.\n\n위기 지원을 위해 Casa de la Familia (877) 611-2272로 연락하세요.\n\n전국 자살예방 상담전화: 988\n\n당신은 소중합니다. 도움이 있습니다. 연락해 주세요 - 혼자 직면할 필요 없습니다."
+  },
+  {
+    keywords: ['안녕', '안녕하세요', '좋은 아침', '좋은 오후', '좋은 저녁'],
+    response: "안녕하세요! 저는 Casa de la Familia의 가상 지원 동반자 Stella입니다. 우리의 서비스에 대해 알아보고 필요한 지원과 연결해 드리기 위해 여기 있습니다. 오늘 무엇을 도와드릴까요?"
+  },
+  {
+    keywords: ['감사', '고마워', '고맙습니다'],
+    response: "천만에요! 연락하는 것은 용기가 필요한 일이며, 지원해 드릴 수 있어 영광입니다. 다른 질문이 있거나 누군가와 이야기해야 한다면 (877) 611-2272로 전화해 주세요. 자신을 잘 돌보세요. 💜"
+  }
+];
+
+// Detect language from text
+const detectLanguage = (text) => {
+  const koreanRegex = /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/;
+  const spanishIndicators = /[áéíóúüñ¿¡]|(\b(hola|qué|cómo|dónde|cuándo|por qué|gracias|ayuda|necesito|quiero|tengo|puedo|hay)\b)/i;
+  
+  if (koreanRegex.test(text)) {
+    return 'ko';
+  }
+  if (spanishIndicators.test(text)) {
+    return 'es';
+  }
+  return 'en';
+};
+
 // Function to find the best matching FAQ response
 const findFaqResponse = (userInput) => {
   const input = userInput.toLowerCase();
+  const detectedLang = detectLanguage(userInput);
+  
+  // Select appropriate FAQ data based on language
+  let faqData;
+  let defaultResponse;
+  
+  if (detectedLang === 'ko') {
+    faqData = faqDataKo;
+    defaultResponse = "연락해 주셔서 감사합니다. 찾고 계신 정보가 없을 수 있지만, Casa de la Familia에 직접 (877) 611-2272로 전화하시기를 권합니다. 우리 직원이 질문에 답하고 적합한 서비스와 연결해 드릴 수 있습니다.\n\n다음에 대해서도 물어보실 수 있습니다:\n• 서비스 및 프로그램\n• 사무실 위치\n• 서비스 비용\n• 이민 평가\n• 가정폭력 지원\n• 시작하는 방법";
+  } else if (detectedLang === 'es') {
+    faqData = faqDataEs;
+    defaultResponse = "Gracias por comunicarte. Aunque quizás no tenga la información específica que buscas, te animo a llamar directamente a Casa de la Familia al (877) 611-2272. Nuestro personal puede responder tus preguntas y ayudarte a conectar con los servicios adecuados.\n\nTambién puedes preguntarme sobre:\n• Nuestros servicios y programas\n• Ubicaciones de oficinas\n• Costo de servicios\n• Evaluaciones de inmigración\n• Apoyo para violencia doméstica\n• Cómo empezar";
+  } else {
+    faqData = faqDataEn;
+    defaultResponse = "Thank you for reaching out. While I may not have the specific information you're looking for, I'd encourage you to call Casa de la Familia directly at (877) 611-2272. Our caring staff can answer your questions and help connect you with the right services.\n\nYou can also ask me about:\n• Our services and programs\n• Office locations\n• Cost of services\n• Immigration evaluations\n• Domestic violence support\n• How to get started";
+  }
+  
   let bestMatch = null;
   let highestScore = 0;
 
@@ -166,14 +397,14 @@ const findFaqResponse = (userInput) => {
   }
 
   // Default response if no match found
-  return "Thank you for reaching out. While I may not have the specific information you're looking for, I'd encourage you to call Casa de la Familia directly at (877) 611-2272. Our caring staff can answer your questions and help connect you with the right services.\n\nYou can also ask me about:\n• Our services and programs\n• Office locations\n• Cost of services\n• Immigration evaluations\n• Domestic violence support\n• How to get started";
+  return defaultResponse;
 };
 
 export default function StellaChatbot() {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: '¡Hola! I\'m Stella, your virtual support companion from Casa de la Familia. I\'m here to help you learn about our services, programs, and resources. How can I assist you today?',
+      content: 'Hey there! 👋 I\'m Stella from Casa de la Familia.\n\nFeel free to chat with me in English, Spanish, or Korean - whatever\'s most comfortable for you. I\'m here to help with anything you need, whether it\'s finding services, learning about our programs, or just figuring out where to start.\n\nWhat brings you here today?',
       timestamp: new Date()
     }
   ]);
@@ -191,67 +422,55 @@ export default function StellaChatbot() {
     scrollToBottom();
   }, [messages]);
 
-  const stellaSystemPrompt = `You are Stella, a compassionate and knowledgeable AI assistant for Casa de la Familia, a non-profit organization dedicated to helping trauma survivors and families in Southern California.
+  const stellaSystemPrompt = `You are Stella, a warm and caring support companion at Casa de la Familia. You talk like a real person - friendly, genuine, and conversational.
 
-ORGANIZATION OVERVIEW:
-Casa dela Familia (CDLF) is a 501(c)(3) non-profit founded in 1996 by Dr. Ana Nogales. They provide comprehensive, culturally sensitive psychological and psychiatric services to individuals and families affected by trauma, particularly in underserved communities.
+PERSONALITY & COMMUNICATION STYLE:
+- Talk naturally like you're having a real conversation with someone, not reading from a script
+- Use casual, warm language - contractions, natural phrases, and a friendly voice
+- Show genuine empathy - acknowledge feelings before jumping to information
+- Ask follow-up questions to understand what the person really needs
+- Vary your responses - don't repeat the same phrases or structures
+- Be concise - real people don't give lengthy bullet-point lists in casual conversation
+- Use occasional gentle humor when appropriate (but be sensitive to serious topics)
+- Say things like "I hear you", "That sounds really tough", "I'm glad you reached out"
+- Avoid sounding like a FAQ bot or customer service script
 
-KEY SERVICES:
-1. Free and Low-Cost Counseling - Individual and family therapy for all ages in English and Spanish
-2. Crisis Intervention - DART (Domestic Abuse Response Team) with specially trained officers and counselors
-3. Legal Counseling - Immigration evaluation reports (48-hour expedited available)
-4. Domestic Violence Support
-5. Sexual Assault Support
-6. Trauma Services
-7. Enhanced Care Management
+LANGUAGE (VERY IMPORTANT):
+- You're fluent in English, Spanish, and Korean
+- ALWAYS detect the language the user writes in and respond in that SAME language
+- Match their casual/formal tone too
+- If they write in Spanish, respond entirely in Spanish (naturally, not translated-sounding)
+- If they write in Korean, respond entirely in Korean (한국어) 
+- If they mix languages, go with their dominant language
 
-PROGRAMS:
-- Amor Sin Violencia
-- CalVCB (California Victim Compensation Board)
-- DART (Domestic Abuse Response Team)
-- De Sabios y Locos
-- Immigration Evaluations
-- Latina Power!
-- Low Cost Counseling
-- SSA (Sexual Assault Services)
-- 13 Reasons Why
+ABOUT CASA DE LA FAMILIA:
+A non-profit founded in 1996 by Dr. Ana Nogales that helps trauma survivors with mental health services. Services are low-cost or free.
 
-LOCATIONS:
-- Santa Ana Office: 1650 East 4th Street, Santa Ana, CA 92701
-- East Los Angeles Office: 4609 East Cesar Chavez Ave, Los Angeles, CA 90022
-- San Juan Capistrano Office: 27221 D Ortega HWY, San Juan Capistrano, CA 92675
+Services: Counseling (individual & family), crisis intervention (DART team), immigration evaluations (48-hr expedited available), domestic violence support, sexual assault support, trauma services.
 
-CONTACT:
-- Phone: (877) 611-2272
-- Website: https://casadelafamilia.org
-- Spanish site: http://esp.casadelafamilia.org/
+Programs: Amor Sin Violencia, DART, Latina Power!, CalVCB, Immigration Evaluations, and more.
 
-TRAININGS OFFERED:
-- 40 Hour Domestic Violence Training
-- 12 Hour Domestic Violence Training
+Offices: Santa Ana (1650 East 4th St), East LA (4609 E Cesar Chavez Ave), San Juan Capistrano (27221 D Ortega HWY). Also offer virtual services throughout California.
 
-YOUR ROLE AS STELLA:
-- Be warm, empathetic, and supportive in all interactions
-- Recognize that people reaching out may be in crisis or dealing with trauma
-- Provide accurate information about services and programs
-- Be bilingual-friendly and culturally sensitive
-- Never minimize someone's experiences or concerns
-- Offer resources and next steps for getting help
-- Encourage people to call (877) 611-2272 for immediate assistance or crisis situations
-- Remind people that services are available at little to no cost regardless of financial situation
-- Emphasize confidentiality and safety
-- Be respectful of privacy - don't ask intrusive questions
-- If someone is in immediate danger, urge them to call 911 or the crisis hotline
+Phone: (877) 611-2272
+Website: casadelafamilia.org
 
-TONE:
-- Compassionate and understanding
-- Professional but warm
-- Culturally sensitive
-- Hopeful and empowering
-- Non-judgmental
-- Trauma-informed
+HOW TO RESPOND:
+- If someone shares something difficult, acknowledge their feelings FIRST before offering help
+- Don't dump all information at once - have a conversation, ask what they need
+- When giving info, weave it naturally into conversation instead of listing bullets
+- If someone seems in crisis, be gentle but clear about resources (911 for emergencies)
+- Remember people might be scared, confused, or hurting - meet them where they are
+- End with an open invitation to continue talking, not a formal sign-off
 
-Remember: You're not a therapist or counselor - you're an informational support assistant helping people access the right resources at Casa dela Familia.`;
+WHAT NOT TO DO:
+- Don't use corporate/formal language like "I'd be happy to assist you with that"
+- Don't give long formatted lists unless specifically asked
+- Don't repeat the phone number in every single response
+- Don't start every response with "Thank you for reaching out"
+- Don't sound like a chatbot - sound like a caring person
+
+You're not a therapist - you're a friendly guide helping people find the right support at Casa de la Familia.`;
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -326,12 +545,23 @@ Remember: You're not a therapist or counselor - you're an informational support 
   };
 
   const toggleLanguage = () => {
-    setLanguage(prev => prev === 'en' ? 'es' : 'en');
+    setLanguage(prev => {
+      if (prev === 'en') return 'es';
+      if (prev === 'es') return 'ko';
+      return 'en';
+    });
+    
+    const langMessages = {
+      en: 'Switching to English! What\'s on your mind?',
+      es: '¡Listo, hablemos en español! ¿Qué necesitas?',
+      ko: '한국어로 대화할게요! 무엇이 궁금하세요?'
+    };
+    
+    const nextLang = language === 'en' ? 'es' : language === 'es' ? 'ko' : 'en';
+    
     const langMessage = {
       role: 'assistant',
-      content: language === 'en' 
-        ? '¡Perfecto! Ahora puedo ayudarte en español. ¿En qué puedo asistirte hoy?'
-        : 'Great! I\'m back to English. How can I help you today?',
+      content: langMessages[nextLang],
       timestamp: new Date()
     };
     setMessages(prev => [...prev, langMessage]);
@@ -472,7 +702,7 @@ Remember: You're not a therapist or counselor - you're an informational support 
               }}
             >
               <Languages size={18} />
-              {language === 'en' ? 'ES' : 'EN'}
+              {language === 'en' ? 'ES' : language === 'es' ? '한' : 'EN'}
             </button>
           </div>
         </div>
@@ -580,7 +810,7 @@ Remember: You're not a therapist or counselor - you're an informational support 
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder={language === 'en' ? "Type your message here..." : "Escribe tu mensaje aquí..."}
+              placeholder={language === 'en' ? "Type your message here..." : language === 'es' ? "Escribe tu mensaje aquí..." : "메시지를 입력하세요..."}
               disabled={isLoading}
               style={{
                 flex: 1,
@@ -653,7 +883,9 @@ Remember: You're not a therapist or counselor - you're an informational support 
           }}>
             {language === 'en'
               ? 'For immediate crisis support, call 911'
-              : 'Para apoyo inmediato en crisis, llama al 911'}
+              : language === 'es'
+              ? 'Para apoyo inmediato en crisis, llama al 911'
+              : '긴급 위기 지원이 필요하시면 911에 전화하세요'}
           </p>
         </div>
       </div>
