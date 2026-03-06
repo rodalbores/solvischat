@@ -114,3 +114,74 @@ Casa dela Familia is a 501(c)(3) non-profit organization founded in 1996 by Dr. 
 ## License
 
 This project is created for Casa dela Familia.
+
+#iFrame
+
+<iframe
+  src="https://stella-chat.pages.dev/"
+  width="400"
+  height="600"
+  style="border: none; border-radius: 12px;"
+  title="Stella Chat"
+></iframe>
+
+
+#Script
+<script>
+(() => {
+  const CHAT_URL = 'https://stella-chat.pages.dev/';
+  const toggle = document.getElementById('stellaToggle');
+  const window_ = document.getElementById('stellaWindow');
+  const frame = document.getElementById('stellaFrame');
+  const loader = document.getElementById('stellaLoader');
+  const greeting = document.getElementById('stellaGreeting');
+  const headerClose = document.getElementById('stellaHeaderClose');
+
+  let isOpen = false;
+  let loaded = false;
+
+  // Show greeting after 2s
+  setTimeout(() => {
+    if (!isOpen) greeting.classList.add('show');
+  }, 2000);
+
+  // Auto-hide greeting after 8s
+  setTimeout(() => {
+    greeting.classList.remove('show');
+  }, 10000);
+
+  function openChat() {
+    isOpen = true;
+    greeting.classList.remove('show');
+    toggle.classList.add('active');
+    window_.classList.add('open');
+
+    // Lazy-load iframe on first open
+    if (!loaded) {
+      frame.src = CHAT_URL;
+      frame.onload = () => {
+        setTimeout(() => loader.classList.add('hidden'), 400);
+      };
+      loaded = true;
+    }
+  }
+
+  function closeChat() {
+    isOpen = false;
+    toggle.classList.remove('active');
+    window_.classList.remove('open');
+  }
+
+  function toggleChat() {
+    isOpen ? closeChat() : openChat();
+  }
+
+  toggle.addEventListener('click', toggleChat);
+  headerClose.addEventListener('click', closeChat);
+
+  // Close on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isOpen) closeChat();
+  });
+})();
+</script>
