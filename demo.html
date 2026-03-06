@@ -1,0 +1,110 @@
+<!--
+  ╔══════════════════════════════════════════════════╗
+  ║  STELLA CHAT WIDGET — Paste this before </body>  ║
+  ╚══════════════════════════════════════════════════╝
+-->
+<div id="stella-widget"></div>
+<script>
+(function(){
+  const CHAT_URL = "https://stella-chat.pages.dev/";
+
+  const css = `
+    #stella-widget{position:fixed;bottom:24px;right:24px;z-index:99999;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+    .sw-btn{width:62px;height:62px;border-radius:50%;border:none;background:linear-gradient(135deg,#6C3CE1,#8B5CF6);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px rgba(0,0,0,.12);transition:transform .3s cubic-bezier(.34,1.56,.64,1),box-shadow .3s;outline:none;position:relative}
+    .sw-btn:hover{transform:scale(1.08);box-shadow:0 8px 32px rgba(108,60,225,.3)}
+    .sw-btn:active{transform:scale(.95)}
+    .sw-btn svg{width:28px;height:28px;position:absolute;transition:transform .3s,opacity .2s}
+    .sw-btn .ic-chat{opacity:1;transform:scale(1) rotate(0)}
+    .sw-btn .ic-close{opacity:0;transform:scale(.5) rotate(-90deg)}
+    .sw-btn.open .ic-chat{opacity:0;transform:scale(.5) rotate(90deg)}
+    .sw-btn.open .ic-close{opacity:1;transform:scale(1) rotate(0)}
+    .sw-dot{position:absolute;top:2px;right:2px;width:14px;height:14px;background:#ef4444;border-radius:50%;border:2.5px solid #fff;transition:transform .3s,opacity .2s}
+    .sw-btn.open .sw-dot{transform:scale(0);opacity:0}
+    .sw-btn::after{content:'';position:absolute;inset:-4px;border-radius:50%;border:2px solid #6C3CE1;opacity:0;animation:sw-pulse 2.5s ease-out 1s 3}
+    @keyframes sw-pulse{0%{transform:scale(1);opacity:.6}100%{transform:scale(1.5);opacity:0}}
+    .sw-win{position:absolute;bottom:78px;right:0;width:400px;height:620px;max-height:calc(100vh - 120px);max-width:calc(100vw - 32px);border-radius:20px;overflow:hidden;box-shadow:0 12px 48px rgba(0,0,0,.18);background:#fff;opacity:0;visibility:hidden;transform:translateY(16px) scale(.92);transform-origin:bottom right;transition:opacity .32s ease,visibility .32s,transform .32s ease}
+    .sw-win.open{opacity:1;visibility:visible;transform:translateY(0) scale(1);transition:opacity .42s cubic-bezier(.34,1.56,.64,1),visibility .42s,transform .42s cubic-bezier(.34,1.56,.64,1)}
+    .sw-hdr{height:60px;background:linear-gradient(135deg,#6C3CE1,#8B5CF6);display:flex;align-items:center;padding:0 16px;gap:10px;color:#fff;position:relative;overflow:hidden}
+    .sw-hdr::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 80% 30%,rgba(255,255,255,.12),transparent 60%);pointer-events:none}
+    .sw-av{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .sw-av svg{width:18px;height:18px}
+    .sw-hdr-txt h3{font-size:.9rem;font-weight:600;margin:0}
+    .sw-hdr-txt span{font-size:.72rem;opacity:.8;display:flex;align-items:center;gap:5px}
+    .sw-hdr-txt span::before{content:'';width:7px;height:7px;border-radius:50%;background:#4ade80;display:inline-block}
+    .sw-x{margin-left:auto;background:rgba(255,255,255,.15);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s}
+    .sw-x:hover{background:rgba(255,255,255,.25)}
+    .sw-x svg{width:14px;height:14px}
+    .sw-body{width:100%;height:calc(100% - 60px);position:relative;background:#fafafa}
+    .sw-body iframe{width:100%;height:100%;border:none;display:block}
+    .sw-load{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#fafafa;transition:opacity .4s;z-index:2}
+    .sw-load.hide{opacity:0;pointer-events:none}
+    .sw-spin{width:32px;height:32px;border:3px solid #e5e5e5;border-top-color:#6C3CE1;border-radius:50%;animation:sw-sp .8s linear infinite}
+    @keyframes sw-sp{to{transform:rotate(360deg)}}
+    .sw-load span{font-size:.82rem;color:#999;font-weight:500}
+    .sw-greet{position:absolute;bottom:74px;right:0;background:#fff;color:#333;padding:10px 16px;border-radius:12px 12px 4px 12px;box-shadow:0 4px 20px rgba(0,0,0,.1);font-size:.85rem;font-weight:500;white-space:nowrap;opacity:0;transform:translateY(8px) scale(.9);transform-origin:bottom right;transition:all .35s cubic-bezier(.34,1.56,.64,1);pointer-events:none}
+    .sw-greet.show{opacity:1;transform:translateY(0) scale(1)}
+    @media(max-width:480px){.sw-win{width:100vw;max-width:100vw;height:calc(100vh - 80px);max-height:calc(100vh - 80px);right:-24px;border-radius:20px 20px 0 0}}
+  `;
+
+  const html = `
+    <div class="sw-greet" id="swGreet">👋 Hi! Need help? Chat with Stella</div>
+    <div class="sw-win" id="swWin">
+      <div class="sw-hdr">
+        <div class="sw-av"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2a5 5 0 0 1 5 5v2a5 5 0 0 1-10 0V7a5 5 0 0 1 5-5z"/><path d="M20 21v-1a7 7 0 0 0-7-7h-2a7 7 0 0 0-7 7v1"/></svg></div>
+        <div class="sw-hdr-txt"><h3>Stella</h3><span>Online now</span></div>
+        <button class="sw-x" id="swX" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="sw-body">
+        <div class="sw-load" id="swLoad"><div class="sw-spin"></div><span>Loading Stella…</span></div>
+        <iframe id="swFrame" title="Stella Chat" loading="lazy" allow="microphone"></iframe>
+      </div>
+    </div>
+    <button class="sw-btn" id="swBtn" aria-label="Chat with Stella">
+      <span class="sw-dot"></span>
+      <svg class="ic-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+      <svg class="ic-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  `;
+
+  // Inject styles
+  const style = document.createElement('style');
+  style.textContent = css;
+  document.head.appendChild(style);
+
+  // Inject HTML
+  document.getElementById('stella-widget').innerHTML = html;
+
+  // Logic
+  const btn = document.getElementById('swBtn');
+  const win = document.getElementById('swWin');
+  const frame = document.getElementById('swFrame');
+  const loader = document.getElementById('swLoad');
+  const greet = document.getElementById('swGreet');
+  const xBtn = document.getElementById('swX');
+  let isOpen = false, loaded = false;
+
+  setTimeout(() => { if(!isOpen) greet.classList.add('show'); }, 2000);
+  setTimeout(() => { greet.classList.remove('show'); }, 10000);
+
+  function open(){
+    isOpen = true;
+    greet.classList.remove('show');
+    btn.classList.add('open');
+    win.classList.add('open');
+    if(!loaded){
+      frame.src = CHAT_URL;
+      frame.onload = () => setTimeout(() => loader.classList.add('hide'), 400);
+      loaded = true;
+    }
+  }
+  function close(){
+    isOpen = false;
+    btn.classList.remove('open');
+    win.classList.remove('open');
+  }
+
+  btn.addEventListener('click', () => isOpen ? close() : open());
+  xBtn.addEventListener('click', close);
+  document.addEventListener('keydown', e => { if(e.key==='Escape' && isOpen) close(); });
+})();
+</script>
