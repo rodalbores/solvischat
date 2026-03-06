@@ -6,7 +6,21 @@
 <div id="stella-widget"></div>
 <script>
 (function(){
-  const CHAT_URL = "https://stella-chat.pages.dev/";
+  const DEFAULT_CHAT_URL = "https://stella-chat.pages.dev/";
+  const hostChatUrl = document.body?.dataset?.stellaChatUrl;
+  const globalChatUrl = window.STELLA_CHAT_URL;
+  const queryChatUrl = new URLSearchParams(window.location.search).get("stellaChatUrl");
+
+  function resolveChatUrl() {
+    const candidate = queryChatUrl || hostChatUrl || globalChatUrl || DEFAULT_CHAT_URL;
+    try {
+      return new URL(candidate, window.location.origin).toString();
+    } catch (_) {
+      return DEFAULT_CHAT_URL;
+    }
+  }
+
+  const CHAT_URL = resolveChatUrl();
 
   const css = `
     #stella-widget{position:fixed;bottom:24px;right:24px;z-index:99999;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
