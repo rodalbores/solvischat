@@ -1,13 +1,18 @@
-import kbChunks from './kb-chunks.js';
+import { readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import kbChunks from '../functions/api/kb-chunks.js';
 
-// Cloudflare Pages Function - handles /api/chat endpoint
-const KB_CHUNKS = Array.isArray(kbChunks) ? kbChunks : [];
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const ROOT = path.resolve(__dirname, '..');
+const QUESTIONS_PATH = path.join(ROOT, 'kb-questions.retrieval.txt');
+const REPORT_PATH = path.join(ROOT, 'kb-questions.retrieval.audit.txt');
 const MAX_CONTEXT_CHARS = 4500;
 const TOP_K = 6;
 const MAX_CHUNKS_PER_SECTION = 2;
 
 const TOKEN_NORMALIZATION = {
-  // Common misspellings
   therapyy: 'therapy',
   therapy: 'therapy',
   theraphy: 'therapy',
@@ -33,8 +38,6 @@ const TOKEN_NORMALIZATION = {
   copay: 'copayment',
   copays: 'copayment',
   reembursement: 'reimbursement',
-
-  // Light synonym normalization
   payments: 'payment',
   fees: 'fee',
   costs: 'cost',
@@ -88,63 +91,6 @@ const EDGE_CASE_CHUNK_HINTS = {
   'kb-0039': ['group counseling', 'group therapy'],
 };
 
-function getThresholdsByQuerySize(queryTokens) {
-  const unique = [...new Set(queryTokens)];
-  const meaningful = unique.filter((token) => !STOPWORDS.has(token) && token.length >= 4);
-  const tokenCount = meaningful.length;
-
-  if (tokenCount <= 2) {
-    return {
-      coverageFloor: 0.2,
-      scoreFloor: 2.3,
-      minExactMatches: 1,
-      minCombinedMatches: 1,
-      fallbackScoreFloor: 2.0,
-    };
-  }
-  if (tokenCount <= 5) {
-    return {
-      coverageFloor: 0.32,
-      scoreFloor: 2.9,
-      minExactMatches: 2,
-      minCombinedMatches: 2,
-      fallbackScoreFloor: 2.4,
-    };
-  }
-  return {
-    coverageFloor: 0.4,
-    scoreFloor: 3.4,
-    minExactMatches: 2,
-    minCombinedMatches: 3,
-    fallbackScoreFloor: 2.9,
-  };
-}
-
-function passesPrimaryThreshold(entry, thresholds) {
-  if (entry.score <= 0) return false;
-  if (entry.weightedCoverage >= thresholds.coverageFloor && entry.exactMatches >= thresholds.minExactMatches) {
-    return true;
-  }
-  if (entry.score >= thresholds.scoreFloor
-    && entry.exactMatches >= thresholds.minExactMatches
-    && (entry.exactMatches + entry.fuzzyMatches) >= thresholds.minCombinedMatches) {
-    return true;
-  }
-  if (entry.classHintMatch
-    && entry.keywordHintMatches >= 1
-    && entry.exactMatches >= thresholds.minExactMatches
-    && entry.weightedCoverage >= (thresholds.coverageFloor - 0.08)) {
-    return true;
-  }
-  return false;
-}
-
-function passesFallbackThreshold(entry, thresholds) {
-  if (entry.score < thresholds.fallbackScoreFloor) return false;
-  if (entry.exactMatches < 1) return false;
-  return entry.weightedCoverage >= 0.18;
-}
-
 function normalizeToken(token) {
   const t = String(token || '').toLowerCase();
   return TOKEN_NORMALIZATION[t] || t;
@@ -169,7 +115,6 @@ function levenshteinDistanceWithin(a, b, maxDistance) {
 
   const prev = new Array(n + 1);
   const curr = new Array(n + 1);
-
   for (let j = 0; j <= n; j += 1) prev[j] = j;
 
   for (let i = 1; i <= m; i += 1) {
@@ -178,17 +123,12 @@ function levenshteinDistanceWithin(a, b, maxDistance) {
     const aChar = a.charCodeAt(i - 1);
     for (let j = 1; j <= n; j += 1) {
       const cost = aChar === b.charCodeAt(j - 1) ? 0 : 1;
-      curr[j] = Math.min(
-        prev[j] + 1,
-        curr[j - 1] + 1,
-        prev[j - 1] + cost
-      );
+      curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
       if (curr[j] < rowMin) rowMin = curr[j];
     }
     if (rowMin > maxDistance) return maxDistance + 1;
     for (let j = 0; j <= n; j += 1) prev[j] = curr[j];
   }
-
   return prev[n];
 }
 
@@ -220,7 +160,6 @@ function queryHasHint(queryTextLower, queryTokensSet, hint) {
     if (token.length <= 4 || STOPWORDS.has(token)) continue;
     if (isFuzzyTokenMatch(token, hintToken)) return true;
   }
-
   return false;
 }
 
@@ -291,6 +230,38 @@ function buildChunkSearchData(chunk) {
   };
 }
 
+function getThresholdsByQuerySize(queryTokens) {
+  const unique = [...new Set(queryTokens)];
+  const meaningful = unique.filter((token) => !STOPWORDS.has(token) && token.length >= 4);
+  const tokenCount = meaningful.length;
+
+  if (tokenCount <= 2) {
+    return {
+      coverageFloor: 0.2,
+      scoreFloor: 2.3,
+      minExactMatches: 1,
+      minCombinedMatches: 1,
+      fallbackScoreFloor: 2.0,
+    };
+  }
+  if (tokenCount <= 5) {
+    return {
+      coverageFloor: 0.32,
+      scoreFloor: 2.9,
+      minExactMatches: 2,
+      minCombinedMatches: 2,
+      fallbackScoreFloor: 2.4,
+    };
+  }
+  return {
+    coverageFloor: 0.4,
+    scoreFloor: 3.4,
+    minExactMatches: 2,
+    minCombinedMatches: 3,
+    fallbackScoreFloor: 2.9,
+  };
+}
+
 function scoreChunk(queryTokens, queryTextLower, chunk) {
   const uniqueTokens = [...new Set(queryTokens)].filter((token) => !STOPWORDS.has(token));
   const queryTokenSet = new Set(uniqueTokens);
@@ -324,7 +295,6 @@ function scoreChunk(queryTokens, queryTextLower, chunk) {
         break;
       }
     }
-
     if (fuzzyMatched) {
       fuzzyMatches += 1;
       score += 0.45 * tokenWeight;
@@ -355,7 +325,6 @@ function scoreChunk(queryTokens, queryTextLower, chunk) {
     .filter((token) => chunk._weightedTokenSet.has(token))
     .length;
   const weightedCoverage = weightedExactMatches / weightedQueryCount;
-  const exactCoverage = exactMatches / (uniqueTokens.length || 1);
 
   if (weightedCoverage >= 0.6) score += 1.0;
   else if (weightedCoverage >= 0.4) score += 0.5;
@@ -367,7 +336,6 @@ function scoreChunk(queryTokens, queryTextLower, chunk) {
   return {
     score,
     weightedCoverage,
-    exactCoverage,
     exactMatches,
     fuzzyMatches,
     titleMatches: titleExactMatches + titleFuzzyMatches,
@@ -376,92 +344,37 @@ function scoreChunk(queryTokens, queryTextLower, chunk) {
   };
 }
 
-const KB_SEARCH_CHUNKS = KB_CHUNKS.map(buildChunkSearchData);
-
-function isDebugEnabled(env) {
-  const value = String(
-    env?.DEBUG_RETRIEVAL || env?.DEBUG_DID_YOU_MEAN || env?.NODE_ENV || ''
-  ).toLowerCase();
-  return value === '1' || value === 'true' || value === 'yes' || value === 'development';
+function passesPrimaryThreshold(entry, thresholds) {
+  if (entry.score <= 0) return false;
+  if (entry.weightedCoverage >= thresholds.coverageFloor && entry.exactMatches >= thresholds.minExactMatches) {
+    return true;
+  }
+  if (entry.score >= thresholds.scoreFloor
+    && entry.exactMatches >= thresholds.minExactMatches
+    && (entry.exactMatches + entry.fuzzyMatches) >= thresholds.minCombinedMatches) {
+    return true;
+  }
+  if (entry.classHintMatch
+    && entry.keywordHintMatches >= 1
+    && entry.exactMatches >= thresholds.minExactMatches
+    && entry.weightedCoverage >= (thresholds.coverageFloor - 0.08)) {
+    return true;
+  }
+  return false;
 }
 
-function buildDidYouMeanDebug(rawTokens, normalizedTokens, topChunks) {
-  const tokenMap = [];
-  const seen = new Set();
-
-  for (let i = 0; i < normalizedTokens.length; i += 1) {
-    const raw = rawTokens[i];
-    const normalized = normalizedTokens[i];
-    const key = `${raw}->${normalized}`;
-    if (!raw || !normalized || seen.has(key)) continue;
-    seen.add(key);
-    if (raw !== normalized) {
-      tokenMap.push({ original: raw, normalized });
-    }
-  }
-
-  const fuzzyMatches = [];
-  const exactSet = new Set();
-  const candidateTokens = new Set();
-
-  for (const chunk of topChunks || []) {
-    for (const token of chunk?._tokens || []) {
-      candidateTokens.add(token);
-    }
-  }
-
-  for (const token of normalizedTokens) {
-    exactSet.add(token);
-  }
-
-  const matchedSeen = new Set();
-  for (const queryToken of exactSet) {
-    if (candidateTokens.has(queryToken)) continue;
-    let matchedToken = null;
-    for (const candidate of candidateTokens) {
-      if (isFuzzyTokenMatch(queryToken, candidate)) {
-        matchedToken = candidate;
-        break;
-      }
-    }
-    if (matchedToken) {
-      const key = `${queryToken}->${matchedToken}`;
-      if (!matchedSeen.has(key)) {
-        fuzzyMatches.push({ queryToken, matchedToken });
-        matchedSeen.add(key);
-      }
-    }
-  }
-
-  return {
-    originalTokens: [...new Set(rawTokens)],
-    normalizedTokens: [...new Set(normalizedTokens)],
-    normalizedFromMisspellingOrAlias: tokenMap,
-    fuzzyMatches,
-  };
+function passesFallbackThreshold(entry, thresholds) {
+  if (entry.score < thresholds.fallbackScoreFloor) return false;
+  if (entry.exactMatches < 1) return false;
+  return entry.weightedCoverage >= 0.18;
 }
 
-function getLatestUserMessage(messages) {
-  if (!Array.isArray(messages)) return '';
-  for (let i = messages.length - 1; i >= 0; i -= 1) {
-    if (messages[i]?.role === 'user' && typeof messages[i]?.content === 'string') {
-      return messages[i].content;
-    }
-  }
-  return '';
-}
-
-function retrieveTopChunks(query, chunks, topK = TOP_K, maxContextChars = MAX_CONTEXT_CHARS) {
+function retrieveTopChunksWithScores(query, chunks, topK = TOP_K, maxContextChars = MAX_CONTEXT_CHARS) {
   const queryTextLower = String(query || '').toLowerCase();
   const queryRawTokens = tokenizeRaw(queryTextLower);
   const normalizedQueryTokens = queryRawTokens.map(normalizeToken);
   const queryTokens = augmentQueryTokens(normalizedQueryTokens, queryTextLower);
-  if (!queryTokens.length || !chunks.length) {
-    return {
-      selected: [],
-      debug: buildDidYouMeanDebug(queryRawTokens, normalizedQueryTokens, []),
-    };
-  }
+  if (!queryTokens.length || !chunks.length) return [];
 
   const thresholds = getThresholdsByQuerySize(queryTokens);
   const rankedAll = chunks
@@ -475,8 +388,11 @@ function retrieveTopChunks(query, chunks, topK = TOP_K, maxContextChars = MAX_CO
       if (b.exactMatches !== a.exactMatches) return b.exactMatches - a.exactMatches;
       return b.titleMatches - a.titleMatches;
     });
+
   const rankedPrimary = rankedAll.filter((entry) => passesPrimaryThreshold(entry, thresholds));
-  const ranked = rankedPrimary.length ? rankedPrimary : rankedAll.filter((entry) => passesFallbackThreshold(entry, thresholds));
+  const ranked = rankedPrimary.length
+    ? rankedPrimary
+    : rankedAll.filter((entry) => passesFallbackThreshold(entry, thresholds));
 
   const selected = [];
   const sectionCounts = new Map();
@@ -485,132 +401,84 @@ function retrieveTopChunks(query, chunks, topK = TOP_K, maxContextChars = MAX_CO
     if (selected.length >= topK) break;
     const text = String(entry.chunk?.text || '');
     if (!text) continue;
+
     const sectionKey = String(entry.chunk?.section_title || '').toLowerCase();
     const sectionCount = sectionCounts.get(sectionKey) || 0;
     if (sectionCount >= MAX_CHUNKS_PER_SECTION) continue;
     if (usedChars + text.length > maxContextChars && selected.length > 0) break;
-    selected.push(entry.chunk);
+
+    selected.push(entry);
     sectionCounts.set(sectionKey, sectionCount + 1);
     usedChars += text.length;
   }
 
-  return {
-    selected,
-    debug: buildDidYouMeanDebug(queryRawTokens, normalizedQueryTokens, selected),
-  };
+  return selected;
 }
 
-function buildRetrievedContext(topChunks) {
-  if (!topChunks.length) return '';
-  const blocks = topChunks.map((chunk, index) => (
-    `Snippet ${index + 1} [${chunk.chunk_id}] (${chunk.section_title}):\n${chunk.text}`
-  ));
-  return `RETRIEVED KNOWLEDGE BASE SNIPPETS (highest relevance first):\n\n${blocks.join('\n\n---\n\n')}`;
-}
+async function main() {
+  const questionsRaw = await readFile(QUESTIONS_PATH, 'utf8');
+  const questions = questionsRaw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
 
-export async function onRequestPost(context) {
-  try {
-    const { system, messages } = await context.request.json();
+  const chunks = Array.isArray(kbChunks) ? kbChunks.map(buildChunkSearchData) : [];
 
-    const apiKey = context.env.GEMINI_API_KEY;
-    
-    if (!apiKey) {
-      return new Response(JSON.stringify({ 
-        error: 'API key not configured' 
-      }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
+  const rows = [];
+  const noResult = [];
+  const weakTop = [];
+
+  for (const question of questions) {
+    const selected = retrieveTopChunksWithScores(question, chunks);
+    const topIds = selected.map((entry) => entry.chunk.chunk_id);
+    const topScore = selected[0]?.score ?? 0;
+
+    if (!topIds.length) {
+      noResult.push(question);
+    } else if (topScore < 3.0) {
+      weakTop.push({ question, topScore, ids: topIds.slice(0, 3) });
     }
 
-    // Convert messages to Gemini format
-    const geminiContents = [];
-    
-    const normalizedSystem = typeof system === 'string' ? system.trim() : '';
-    const latestUserMessage = getLatestUserMessage(messages);
-    const retrievalResult = retrieveTopChunks(latestUserMessage, KB_SEARCH_CHUNKS);
-    const topChunks = retrievalResult.selected;
-    const retrievedContext = buildRetrievedContext(topChunks);
-
-    const combinedInstruction = [
-      normalizedSystem,
-      retrievedContext,
-      'Use retrieved snippets as the primary factual source. If relevant details are missing, say you do not have enough information and suggest contacting Casa de la Familia at (877) 611-2272.'
-    ].filter(Boolean).join('\n\n');
-
-    // Add system instruction and knowledge context as first user message if provided
-    if (combinedInstruction) {
-      geminiContents.push({
-        role: 'user',
-        parts: [{ text: `System instruction and context:\n${combinedInstruction}\n\nPlease follow the above instruction for all responses.` }]
-      });
-      geminiContents.push({
-        role: 'model',
-        parts: [{ text: 'Understood. I will follow these instructions.' }]
-      });
-    }
-    
-    // Convert chat messages
-    for (const msg of messages) {
-      geminiContents.push({
-        role: msg.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: msg.content }]
-      });
-    }
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: geminiContents,
-          generationConfig: {
-            maxOutputTokens: 1000,
-            temperature: 0.7,
-          }
-        })
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return new Response(JSON.stringify({ 
-        error: errorData.error?.message || 'Failed to get response from AI' 
-      }), {
-        status: response.status,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const data = await response.json();
-    
-    // Convert Gemini response to match expected format
-    const geminiResponse = {
-      content: [{
-        type: 'text',
-        text: data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response generated'
-      }]
-    };
-
-    if (isDebugEnabled(context.env)) {
-      geminiResponse.debug = {
-        didYouMean: retrievalResult.debug,
-      };
-    }
-    
-    return new Response(JSON.stringify(geminiResponse), {
-      headers: { 'Content-Type': 'application/json' }
-    });
-
-  } catch (error) {
-    return new Response(JSON.stringify({ 
-      error: 'An error occurred while processing your request.' 
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
+    rows.push({
+      question,
+      topIds: topIds.slice(0, 6),
+      topScore: Number(topScore.toFixed(2)),
     });
   }
+
+  const lines = [];
+  lines.push(`# Retrieval audit (${new Date().toISOString()})`);
+  lines.push(`questions: ${rows.length}`);
+  lines.push(`no_result: ${noResult.length}`);
+  lines.push(`weak_top_score_lt_3: ${weakTop.length}`);
+  lines.push('');
+  lines.push('## question -> top chunk IDs');
+  for (const row of rows) {
+    lines.push(`- ${row.question} -> ${row.topIds.length ? row.topIds.join(', ') : '(none)'} [topScore=${row.topScore}]`);
+  }
+  lines.push('');
+  lines.push('## edge cases');
+  lines.push('### no result');
+  if (!noResult.length) {
+    lines.push('- (none)');
+  } else {
+    for (const q of noResult) lines.push(`- ${q}`);
+  }
+  lines.push('');
+  lines.push('### weak top score (< 3.0)');
+  if (!weakTop.length) {
+    lines.push('- (none)');
+  } else {
+    for (const item of weakTop) {
+      lines.push(`- ${item.question} -> ${item.ids.join(', ')} [topScore=${item.topScore.toFixed(2)}]`);
+    }
+  }
+
+  await writeFile(REPORT_PATH, `${lines.join('\n')}\n`, 'utf8');
+  console.log(`Wrote report: ${REPORT_PATH}`);
 }
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

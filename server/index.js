@@ -16,6 +16,7 @@ const PORT = process.env.PORT || 3001;
 const KB_CHUNKS = Array.isArray(kbChunks) ? kbChunks : [];
 const MAX_CONTEXT_CHARS = 4500;
 const TOP_K = 6;
+const MAX_CHUNKS_PER_SECTION = 2;
 
 const CLASS_KEYWORDS = {
   'critical-safety': ['emergency', 'crisis', 'danger', 'suicide', 'harm', '911', 'urgent'],
@@ -23,6 +24,87 @@ const CLASS_KEYWORDS = {
   financial: ['payment', 'insurance', 'reimbursement', 'fee', 'cost', 'charges', 'deductible'],
   'rights-policy': ['right', 'responsibility', 'consent', 'complaint', 'minor', 'guardian', 'policy'],
 };
+
+const STOPWORDS = new Set([
+  'what', 'when', 'where', 'which', 'who', 'whom', 'whose', 'why', 'how',
+  'can', 'could', 'should', 'would', 'will', 'do', 'does', 'did', 'is',
+  'are', 'was', 'were', 'am', 'be', 'been', 'being', 'have', 'has', 'had',
+  'i', 'me', 'my', 'mine', 'you', 'your', 'yours', 'we', 'our', 'ours',
+  'they', 'them', 'their', 'theirs', 'a', 'an', 'the', 'and', 'or', 'to',
+  'for', 'of', 'in', 'on', 'at', 'by', 'with', 'about', 'from', 'into',
+  'over', 'after', 'before', 'between', 'during', 'without', 'through',
+  'than', 'then', 'if', 'as', 'that', 'this', 'these', 'those', 'it',
+]);
+
+const EDGE_CASE_CHUNK_HINTS = {
+  'kb-0004': ['reschedule', 'cancel appointment', 'scheduling changes', 'phone number'],
+  'kb-0010': ['individual counseling', 'individual therapy', 'psychological approaches'],
+  'kb-0014': ['stop scheduling', 'several weeks', 'four weeks', 'services end', 'return later'],
+  'kb-0016': ['family counseling', 'couples counseling', 'marriage counseling', 'safety risk'],
+  'kb-0017': ['family counseling', 'couples counseling', 'marriage counseling'],
+  'kb-0018': ['immediate safety risk', 'safety risk', 'emergency action', 'at risk'],
+  'kb-0027': ['immediate safety risk', 'emergency action'],
+  'kb-0031': ['48 hours notice', 'cancel less than 48 hours'],
+  'kb-0032': ['less than 48 hours notice', 'late cancellation', 'no show', 'no-show', 'missed appointment'],
+  'kb-0039': ['group counseling', 'group therapy'],
+};
+
+function getThresholdsByQuerySize(queryTokens) {
+  const unique = [...new Set(queryTokens)];
+  const meaningful = unique.filter((token) => !STOPWORDS.has(token) && token.length >= 4);
+  const tokenCount = meaningful.length;
+
+  if (tokenCount <= 2) {
+    return {
+      coverageFloor: 0.2,
+      scoreFloor: 2.3,
+      minExactMatches: 1,
+      minCombinedMatches: 1,
+      fallbackScoreFloor: 2.0,
+    };
+  }
+  if (tokenCount <= 5) {
+    return {
+      coverageFloor: 0.32,
+      scoreFloor: 2.9,
+      minExactMatches: 2,
+      minCombinedMatches: 2,
+      fallbackScoreFloor: 2.4,
+    };
+  }
+  return {
+    coverageFloor: 0.4,
+    scoreFloor: 3.4,
+    minExactMatches: 2,
+    minCombinedMatches: 3,
+    fallbackScoreFloor: 2.9,
+  };
+}
+
+function passesPrimaryThreshold(entry, thresholds) {
+  if (entry.score <= 0) return false;
+  if (entry.weightedCoverage >= thresholds.coverageFloor && entry.exactMatches >= thresholds.minExactMatches) {
+    return true;
+  }
+  if (entry.score >= thresholds.scoreFloor
+    && entry.exactMatches >= thresholds.minExactMatches
+    && (entry.exactMatches + entry.fuzzyMatches) >= thresholds.minCombinedMatches) {
+    return true;
+  }
+  if (entry.classHintMatch
+    && entry.keywordHintMatches >= 1
+    && entry.exactMatches >= thresholds.minExactMatches
+    && entry.weightedCoverage >= (thresholds.coverageFloor - 0.08)) {
+    return true;
+  }
+  return false;
+}
+
+function passesFallbackThreshold(entry, thresholds) {
+  if (entry.score < thresholds.fallbackScoreFloor) return false;
+  if (entry.exactMatches < 1) return false;
+  return entry.weightedCoverage >= 0.18;
+}
 
 function tokenize(text) {
   return String(text || '')
@@ -32,35 +114,227 @@ function tokenize(text) {
     .filter((token) => token.length >= 3);
 }
 
+function normalizeToken(token) {
+  const t = String(token || '').toLowerCase();
+  const map = {
+    counseling: 'therapy',
+    counselling: 'therapy',
+    scheduling: 'schedule',
+    appointments: 'appointment',
+    weeks: 'week',
+    services: 'service',
+    couples: 'couple',
+  };
+  return map[t] || t;
+}
+
+function levenshteinDistanceWithin(a, b, maxDistance) {
+  const m = a.length;
+  const n = b.length;
+  if (Math.abs(m - n) > maxDistance) return maxDistance + 1;
+
+  const prev = new Array(n + 1);
+  const curr = new Array(n + 1);
+  for (let j = 0; j <= n; j += 1) prev[j] = j;
+
+  for (let i = 1; i <= m; i += 1) {
+    curr[0] = i;
+    let rowMin = curr[0];
+    const aChar = a.charCodeAt(i - 1);
+    for (let j = 1; j <= n; j += 1) {
+      const cost = aChar === b.charCodeAt(j - 1) ? 0 : 1;
+      curr[j] = Math.min(
+        prev[j] + 1,
+        curr[j - 1] + 1,
+        prev[j - 1] + cost
+      );
+      if (curr[j] < rowMin) rowMin = curr[j];
+    }
+    if (rowMin > maxDistance) return maxDistance + 1;
+    for (let j = 0; j <= n; j += 1) prev[j] = curr[j];
+  }
+
+  return prev[n];
+}
+
+function getFuzzyThreshold(token) {
+  const len = token.length;
+  if (len <= 4) return 0;
+  if (len <= 7) return 1;
+  return 2;
+}
+
+function isFuzzyTokenMatch(a, b) {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  if (Math.abs(a.length - b.length) > 2) return false;
+  const maxDistance = getFuzzyThreshold(a);
+  return levenshteinDistanceWithin(a, b, maxDistance) <= maxDistance;
+}
+
+function queryHasHint(queryTextLower, queryTokensSet, hint) {
+  const hintLower = String(hint || '').toLowerCase();
+  if (!hintLower) return false;
+  if (queryTextLower.includes(hintLower)) return true;
+  if (queryTokensSet.has(hintLower)) return true;
+  if (hintLower.length <= 5) return false;
+
+  for (const token of queryTokensSet) {
+    if (token.length <= 4 || STOPWORDS.has(token)) continue;
+    if (isFuzzyTokenMatch(token, hintLower)) return true;
+  }
+
+  return false;
+}
+
+function augmentQueryTokens(queryTokens, queryTextLower) {
+  const tokenSet = new Set(queryTokens);
+  const add = (...tokens) => {
+    for (const token of tokens) {
+      const normalized = normalizeToken(token);
+      if (normalized && normalized.length >= 3) tokenSet.add(normalized);
+    }
+  };
+
+  if (/\bindividual\s+(therapy|counseling|counselling)\b/.test(queryTextLower)) {
+    add('individual', 'therapy', 'treatment');
+  }
+  if (/\bgroup\s+(therapy|counseling|counselling)\b/.test(queryTextLower)) {
+    add('group', 'therapy');
+  }
+  if (/\bfamily\s+(therapy|counseling|counselling)\b/.test(queryTextLower)) {
+    add('family', 'therapy', 'couple');
+  }
+  if (/\b(marriage|couples?)\s+(therapy|counseling|counselling)\b/.test(queryTextLower)) {
+    add('marriage', 'couple', 'therapy', 'family');
+  }
+  if (/\b(less than|under)\s+48\s+hours?\b/.test(queryTextLower)) {
+    add('48', 'notice', 'cancel', 'cancellation', 'late', 'show', 'noshow');
+  }
+  if (/\bno[\s-]?show\b/.test(queryTextLower)) {
+    add('noshow', 'missed', 'appointment');
+  }
+  if (/\b(schedule|scheduling)\s+(changes?|change)\b/.test(queryTextLower)
+    || /\bcancel or reschedule\b/.test(queryTextLower)) {
+    add('schedule', 'appointment', 'reschedule', 'cancel');
+  }
+  if (/\bstop scheduling\b/.test(queryTextLower) || /\bseveral weeks?\b/.test(queryTextLower)) {
+    add('schedule', 'week', 'terminate', 'break', 'return');
+  }
+  if (/\bservices?\s+end\b/.test(queryTextLower) || /\breturn later\b/.test(queryTextLower)) {
+    add('termination', 'terminate', 'return', 'therapy');
+  }
+  if (/\bimmediate safety risk\b/.test(queryTextLower) || /\bat risk\b/.test(queryTextLower)) {
+    add('safety', 'risk', 'emergency', 'crisis', 'danger');
+  }
+  if (/\bhow long\b/.test(queryTextLower) && /\btherapy\b/.test(queryTextLower)) {
+    add('session', 'length', 'minute');
+  }
+
+  return [...tokenSet];
+}
+
+function buildChunkSearchData(chunk) {
+  const title = String(chunk.section_title || '').toLowerCase();
+  const text = `${chunk.section_title || ''}\n${chunk.text || ''}`;
+  const mergedKeywordHints = [
+    ...(Array.isArray(chunk.keyword_hints) ? chunk.keyword_hints : []),
+    ...(EDGE_CASE_CHUNK_HINTS[chunk.chunk_id] || []),
+  ];
+  const tokens = tokenize(text).map(normalizeToken);
+  const tokenSet = new Set(tokens);
+  const weightedTokenSet = new Set(tokens.filter((token) => !STOPWORDS.has(token)));
+  return {
+    ...chunk,
+    _keywordHints: mergedKeywordHints,
+    _titleLower: title,
+    _tokenSet: tokenSet,
+    _weightedTokenSet: weightedTokenSet,
+    _tokens: [...tokenSet],
+  };
+}
+
 function scoreChunk(queryTokens, queryTextLower, chunk) {
-  const chunkText = `${chunk.section_title || ''}\n${chunk.text || ''}`.toLowerCase();
-  const uniqueTokens = [...new Set(queryTokens)];
+  const uniqueTokens = [...new Set(queryTokens)].filter((token) => !STOPWORDS.has(token));
+  const queryTokenSet = new Set(uniqueTokens);
+  const weightedQueryTokens = uniqueTokens.filter((token) => token.length >= 4);
+  const weightedQueryTokenSet = new Set(weightedQueryTokens);
+  const weightedQueryCount = weightedQueryTokens.length || uniqueTokens.length || 1;
   let score = 0;
+  let exactMatches = 0;
+  let fuzzyMatches = 0;
+  let titleExactMatches = 0;
+  let titleFuzzyMatches = 0;
+  let keywordHintMatches = 0;
+  let classHintMatch = 0;
 
   for (const token of uniqueTokens) {
-    if (chunkText.includes(token)) {
-      score += 1;
-      if ((chunk.section_title || '').toLowerCase().includes(token)) {
-        score += 0.6;
+    const tokenWeight = token.length >= 7 ? 1.1 : token.length >= 5 ? 1.0 : 0.9;
+    if (chunk._tokenSet.has(token)) {
+      exactMatches += 1;
+      score += 1.2 * tokenWeight;
+      if (chunk._titleLower.includes(token)) {
+        titleExactMatches += 1;
+        score += 0.6 * tokenWeight;
+      }
+      continue;
+    }
+
+    let fuzzyMatched = false;
+    for (const chunkToken of chunk._tokens) {
+      if (isFuzzyTokenMatch(token, chunkToken)) {
+        fuzzyMatched = true;
+        break;
+      }
+    }
+
+    if (fuzzyMatched) {
+      fuzzyMatches += 1;
+      score += 0.45 * tokenWeight;
+      if (chunk._titleLower.includes(token)) {
+        titleFuzzyMatches += 1;
+        score += 0.18 * tokenWeight;
       }
     }
   }
 
-  for (const hint of chunk.keyword_hints || []) {
-    if (queryTextLower.includes(String(hint).toLowerCase())) {
-      score += 1.2;
+  for (const hint of chunk._keywordHints || []) {
+    if (queryHasHint(queryTextLower, queryTokenSet, hint)) {
+      keywordHintMatches += 1;
+      score += 1.0;
     }
   }
 
   const classHints = CLASS_KEYWORDS[chunk.retrieval_class] || [];
   for (const hint of classHints) {
-    if (queryTextLower.includes(hint)) {
-      score += 1.3;
+    if (queryHasHint(queryTextLower, queryTokenSet, hint)) {
+      classHintMatch = 1;
+      score += 0.8;
       break;
     }
   }
 
-  return score;
+  const weightedExactMatches = [...weightedQueryTokenSet]
+    .filter((token) => chunk._weightedTokenSet.has(token))
+    .length;
+  const weightedCoverage = weightedExactMatches / weightedQueryCount;
+
+  if (weightedCoverage >= 0.6) score += 1.0;
+  else if (weightedCoverage >= 0.4) score += 0.5;
+  else if (weightedCoverage < 0.2) score -= 0.5;
+
+  if (exactMatches === 0 && fuzzyMatches > 0) score -= 0.5;
+  if (exactMatches + fuzzyMatches < 2 && uniqueTokens.length >= 4) score -= 0.4;
+
+  return {
+    score,
+    weightedCoverage,
+    exactMatches,
+    fuzzyMatches,
+    titleMatches: titleExactMatches + titleFuzzyMatches,
+    keywordHintMatches,
+    classHintMatch,
+  };
 }
 
 function getLatestUserMessage(messages) {
@@ -75,30 +349,44 @@ function getLatestUserMessage(messages) {
 
 function retrieveTopChunks(query, chunks, topK = TOP_K, maxContextChars = MAX_CONTEXT_CHARS) {
   const queryTextLower = String(query || '').toLowerCase();
-  const queryTokens = tokenize(queryTextLower);
+  const queryTokens = augmentQueryTokens(tokenize(queryTextLower).map(normalizeToken), queryTextLower);
   if (!queryTokens.length || !chunks.length) return [];
 
-  const ranked = chunks
+  const thresholds = getThresholdsByQuerySize(queryTokens);
+  const rankedAll = chunks
     .map((chunk) => ({
       chunk,
-      score: scoreChunk(queryTokens, queryTextLower, chunk),
-    }))
-    .filter((entry) => entry.score > 0)
-    .sort((a, b) => b.score - a.score);
+      ...scoreChunk(queryTokens, queryTextLower, chunk),
+    })
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (b.weightedCoverage !== a.weightedCoverage) return b.weightedCoverage - a.weightedCoverage;
+      if (b.exactMatches !== a.exactMatches) return b.exactMatches - a.exactMatches;
+      return b.titleMatches - a.titleMatches;
+    });
+  const rankedPrimary = rankedAll.filter((entry) => passesPrimaryThreshold(entry, thresholds));
+  const ranked = rankedPrimary.length ? rankedPrimary : rankedAll.filter((entry) => passesFallbackThreshold(entry, thresholds));
 
   const selected = [];
+  const sectionCounts = new Map();
   let usedChars = 0;
   for (const entry of ranked) {
     if (selected.length >= topK) break;
     const text = String(entry.chunk?.text || '');
     if (!text) continue;
+    const sectionKey = String(entry.chunk?.section_title || '').toLowerCase();
+    const sectionCount = sectionCounts.get(sectionKey) || 0;
+    if (sectionCount >= MAX_CHUNKS_PER_SECTION) continue;
     if (usedChars + text.length > maxContextChars && selected.length > 0) break;
     selected.push(entry.chunk);
+    sectionCounts.set(sectionKey, sectionCount + 1);
     usedChars += text.length;
   }
 
   return selected;
 }
+
+const KB_SEARCH_CHUNKS = KB_CHUNKS.map(buildChunkSearchData);
 
 function buildRetrievedContext(topChunks) {
   if (!topChunks.length) return '';
@@ -133,7 +421,7 @@ app.post('/api/chat', async (req, res) => {
     
     const normalizedSystem = typeof system === 'string' ? system.trim() : '';
     const latestUserMessage = getLatestUserMessage(messages);
-    const topChunks = retrieveTopChunks(latestUserMessage, KB_CHUNKS);
+    const topChunks = retrieveTopChunks(latestUserMessage, KB_SEARCH_CHUNKS);
     const retrievedContext = buildRetrievedContext(topChunks);
 
     const combinedInstruction = [
