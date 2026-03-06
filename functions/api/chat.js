@@ -5,6 +5,7 @@ const KB_CHUNKS = Array.isArray(kbChunks) ? kbChunks : [];
 const MAX_CONTEXT_CHARS = 4500;
 const TOP_K = 6;
 const MAX_CHUNKS_PER_SECTION = 2;
+const SIMILARITY_THRESHOLD = 0.63;
 
 const TOKEN_NORMALIZATION = {
   // Common misspellings
@@ -280,15 +281,54 @@ function buildChunkSearchData(chunk) {
   ];
   const tokens = tokenize(text);
   const tokenSet = new Set(tokens);
+  const tokenCounts = new Map();
+  for (const token of tokens) {
+    tokenCounts.set(token, (tokenCounts.get(token) || 0) + 1);
+  }
   const weightedTokenSet = new Set(tokens.filter((token) => !STOPWORDS.has(token)));
   return {
     ...chunk,
     _keywordHints: mergedKeywordHints,
     _titleLower: title,
     _tokenSet: tokenSet,
+    _tokenCounts: tokenCounts,
     _weightedTokenSet: weightedTokenSet,
     _tokens: [...tokenSet],
   };
+}
+
+function buildTokenCountMap(tokens) {
+  const counts = new Map();
+  for (const token of tokens || []) {
+    if (!token || STOPWORDS.has(token) || token.length < 3) continue;
+    counts.set(token, (counts.get(token) || 0) + 1);
+  }
+  return counts;
+}
+
+function vectorNorm(tokenCountMap) {
+  let sumSquares = 0;
+  for (const value of tokenCountMap.values()) {
+    sumSquares += value * value;
+  }
+  return Math.sqrt(sumSquares);
+}
+
+function cosineSimilarityWithChunk(queryTokenCounts, queryNorm, chunkTokenCounts) {
+  if (!queryNorm || !queryTokenCounts.size || !chunkTokenCounts) return 0;
+
+  let dot = 0;
+  let projectedChunkNormSquares = 0;
+
+  for (const [token, queryWeight] of queryTokenCounts) {
+    const chunkWeight = chunkTokenCounts.get(token) || 0;
+    if (!chunkWeight) continue;
+    dot += queryWeight * chunkWeight;
+    projectedChunkNormSquares += chunkWeight * chunkWeight;
+  }
+
+  if (!dot || !projectedChunkNormSquares) return 0;
+  return dot / (queryNorm * Math.sqrt(projectedChunkNormSquares));
 }
 
 function scoreChunk(queryTokens, queryTextLower, chunk) {
@@ -459,7 +499,38 @@ function retrieveTopChunks(query, chunks, topK = TOP_K, maxContextChars = MAX_CO
   if (!queryTokens.length || !chunks.length) {
     return {
       selected: [],
-      debug: buildDidYouMeanDebug(queryRawTokens, normalizedQueryTokens, []),
+      debug: {
+        didYouMean: buildDidYouMeanDebug(queryRawTokens, normalizedQueryTokens, []),
+        retrieval: {
+          similarityThreshold: SIMILARITY_THRESHOLD,
+          queryTokenCount: queryTokens.length,
+          totalChunksEvaluated: chunks.length,
+          passedSimilarityCount: 0,
+          failedSimilarityCount: chunks.length,
+          rankingMode: 'none',
+          candidates: [],
+        },
+      },
+    };
+  }
+
+  const queryTokenCounts = buildTokenCountMap(queryTokens);
+  const queryNorm = vectorNorm(queryTokenCounts);
+  if (!queryNorm) {
+    return {
+      selected: [],
+      debug: {
+        didYouMean: buildDidYouMeanDebug(queryRawTokens, normalizedQueryTokens, []),
+        retrieval: {
+          similarityThreshold: SIMILARITY_THRESHOLD,
+          queryTokenCount: queryTokens.length,
+          totalChunksEvaluated: chunks.length,
+          passedSimilarityCount: 0,
+          failedSimilarityCount: chunks.length,
+          rankingMode: 'none',
+          candidates: [],
+        },
+      },
     };
   }
 
@@ -467,18 +538,33 @@ function retrieveTopChunks(query, chunks, topK = TOP_K, maxContextChars = MAX_CO
   const rankedAll = chunks
     .map((chunk) => ({
       chunk,
+      similarity: cosineSimilarityWithChunk(queryTokenCounts, queryNorm, chunk._tokenCounts),
       ...scoreChunk(queryTokens, queryTextLower, chunk),
-    }))
+    }));
+  const rankedAllSorted = [...rankedAll].sort((a, b) => {
+    if (b.similarity !== a.similarity) return b.similarity - a.similarity;
+    if (b.score !== a.score) return b.score - a.score;
+    if (b.weightedCoverage !== a.weightedCoverage) return b.weightedCoverage - a.weightedCoverage;
+    if (b.exactMatches !== a.exactMatches) return b.exactMatches - a.exactMatches;
+    return b.titleMatches - a.titleMatches;
+  });
+  const rankedBySimilarity = rankedAll
+    .filter((entry) => entry.similarity > SIMILARITY_THRESHOLD)
     .sort((a, b) => {
+      if (b.similarity !== a.similarity) return b.similarity - a.similarity;
       if (b.score !== a.score) return b.score - a.score;
       if (b.weightedCoverage !== a.weightedCoverage) return b.weightedCoverage - a.weightedCoverage;
       if (b.exactMatches !== a.exactMatches) return b.exactMatches - a.exactMatches;
       return b.titleMatches - a.titleMatches;
     });
-  const rankedPrimary = rankedAll.filter((entry) => passesPrimaryThreshold(entry, thresholds));
-  const ranked = rankedPrimary.length ? rankedPrimary : rankedAll.filter((entry) => passesFallbackThreshold(entry, thresholds));
+  const rankedPrimary = rankedBySimilarity.filter((entry) => passesPrimaryThreshold(entry, thresholds));
+  const ranked = rankedPrimary.length
+    ? rankedPrimary
+    : rankedBySimilarity.filter((entry) => passesFallbackThreshold(entry, thresholds));
+  const rankingMode = rankedPrimary.length ? 'primary' : 'fallback';
 
   const selected = [];
+  const selectedEntries = [];
   const sectionCounts = new Map();
   let usedChars = 0;
   for (const entry of ranked) {
@@ -490,13 +576,39 @@ function retrieveTopChunks(query, chunks, topK = TOP_K, maxContextChars = MAX_CO
     if (sectionCount >= MAX_CHUNKS_PER_SECTION) continue;
     if (usedChars + text.length > maxContextChars && selected.length > 0) break;
     selected.push(entry.chunk);
+    selectedEntries.push(entry);
     sectionCounts.set(sectionKey, sectionCount + 1);
     usedChars += text.length;
   }
 
+  const selectedIds = new Set(selectedEntries.map((entry) => entry.chunk.chunk_id));
+  const candidates = rankedAllSorted.slice(0, 25).map((entry) => ({
+    chunkId: entry.chunk.chunk_id,
+    sectionTitle: entry.chunk.section_title,
+    retrievalClass: entry.chunk.retrieval_class,
+    similarity: Number(entry.similarity.toFixed(4)),
+    score: Number(entry.score.toFixed(3)),
+    passedSimilarity: entry.similarity > SIMILARITY_THRESHOLD,
+    passedPrimary: passesPrimaryThreshold(entry, thresholds),
+    passedFallback: passesFallbackThreshold(entry, thresholds),
+    selected: selectedIds.has(entry.chunk.chunk_id),
+  }));
+
   return {
     selected,
-    debug: buildDidYouMeanDebug(queryRawTokens, normalizedQueryTokens, selected),
+    debug: {
+      didYouMean: buildDidYouMeanDebug(queryRawTokens, normalizedQueryTokens, selected),
+      retrieval: {
+        similarityThreshold: SIMILARITY_THRESHOLD,
+        queryTokenCount: queryTokens.length,
+        totalChunksEvaluated: rankedAll.length,
+        passedSimilarityCount: rankedBySimilarity.length,
+        failedSimilarityCount: rankedAll.length - rankedBySimilarity.length,
+        rankingMode,
+        selectedChunkIds: [...selectedIds],
+        candidates,
+      },
+    },
   };
 }
 
@@ -506,6 +618,14 @@ function buildRetrievedContext(topChunks) {
     `Snippet ${index + 1} [${chunk.chunk_id}] (${chunk.section_title}):\n${chunk.text}`
   ));
   return `RETRIEVED KNOWLEDGE BASE SNIPPETS (highest relevance first):\n\n${blocks.join('\n\n---\n\n')}`;
+}
+
+function buildKbOnlyFallback(latestUserMessage) {
+  const prompt = String(latestUserMessage || '').trim();
+  const intro = prompt
+    ? `I could not find a reliable answer in the current knowledge base for: "${prompt}".`
+    : 'I could not find a reliable answer in the current knowledge base for that question.';
+  return `${intro} Please contact Casa de la Familia at (877) 611-2272 for direct support.`;
 }
 
 export async function onRequestPost(context) {
@@ -532,10 +652,27 @@ export async function onRequestPost(context) {
     const topChunks = retrievalResult.selected;
     const retrievedContext = buildRetrievedContext(topChunks);
 
+    if (!topChunks.length) {
+      const kbOnlyFallback = {
+        content: [{
+          type: 'text',
+          text: buildKbOnlyFallback(latestUserMessage)
+        }]
+      };
+      if (isDebugEnabled(context.env)) {
+        kbOnlyFallback.debug = retrievalResult.debug;
+      }
+      return new Response(JSON.stringify(kbOnlyFallback), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     const combinedInstruction = [
       normalizedSystem,
       retrievedContext,
-      'Use retrieved snippets as the primary factual source. If relevant details are missing, say you do not have enough information and suggest contacting Casa de la Familia at (877) 611-2272.'
+      'Answer using only the retrieved knowledge base snippets above.',
+      'Do not rely on general background knowledge or reusable Casa de la Familia marketing blurbs.',
+      'If the snippets are insufficient for any part of the question, say you do not have enough information in the knowledge base and suggest contacting Casa de la Familia at (877) 611-2272.'
     ].filter(Boolean).join('\n\n');
 
     // Add system instruction and knowledge context as first user message if provided
@@ -569,7 +706,7 @@ export async function onRequestPost(context) {
           contents: geminiContents,
           generationConfig: {
             maxOutputTokens: 1000,
-            temperature: 0.7,
+            temperature: 0.2,
           }
         })
       }
@@ -596,9 +733,7 @@ export async function onRequestPost(context) {
     };
 
     if (isDebugEnabled(context.env)) {
-      geminiResponse.debug = {
-        didYouMean: retrievalResult.debug,
-      };
+      geminiResponse.debug = retrievalResult.debug;
     }
     
     return new Response(JSON.stringify(geminiResponse), {
