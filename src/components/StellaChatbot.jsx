@@ -356,6 +356,9 @@ const detectLanguage = (text) => {
   return 'en';
 };
 
+// Strip markdown emphasis markers so chat reads naturally.
+const sanitizeAssistantText = (text) => String(text || '').replace(/\*\*/g, '');
+
 // Function to find the best matching FAQ response
 const findFaqResponse = (userInput) => {
   const input = userInput.toLowerCase();
@@ -467,16 +470,57 @@ HOW TO RESPOND:
 WHAT NOT TO DO:
 - Don't use corporate/formal language like "I'd be happy to assist you with that"
 - Don't give long formatted lists unless specifically asked
+- Don't use markdown styling markers like **bold** or __underline__
 - Don't repeat the phone number in every single response
 - Don't start every response with "Thank you for reaching out"
 - Don't sound like a chatbot - sound like a caring person
 
 You're not a therapist - you're a friendly guide helping people find the right support at Casa de la Familia.`;
 
+  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+  const animateAssistantResponse = async (fullText) => {
+    const messageId = `assistant-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const text = fullText || '';
+    const hasSpaces = /\s/.test(text.trim());
+    const tokens = hasSpaces
+      ? (text.match(/\S+\s*/g) || [text])
+      : Array.from(text);
+
+    setMessages(prev => [
+      ...prev,
+      {
+        id: messageId,
+        role: 'assistant',
+        content: '',
+        timestamp: new Date()
+      }
+    ]);
+
+    let assembled = '';
+    for (const token of tokens) {
+      assembled += token;
+
+      setMessages(prev => prev.map(msg => (
+        msg.id === messageId ? { ...msg, content: assembled } : msg
+      )));
+
+      let delay = hasSpaces ? 68 : 42;
+      if (/[.!?]\s*$/.test(token)) delay += 220;
+      else if (/[,;:]\s*$/.test(token)) delay += 120;
+
+      await sleep(delay);
+    }
+  };
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
     const userInput = input;
+    const detectedLanguage = detectLanguage(userInput);
+    if (detectedLanguage !== language) {
+      setLanguage(detectedLanguage);
+    }
     const userMessage = {
       role: 'user',
       content: userInput,
@@ -514,12 +558,7 @@ You're not a therapist - you're a friendly guide helping people find the right s
       const data = await response.json();
       
       if (data.content && data.content.length > 0) {
-        const assistantMessage = {
-          role: 'assistant',
-          content: data.content[0].text,
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, assistantMessage]);
+        await animateAssistantResponse(sanitizeAssistantText(data.content[0].text));
       } else if (data.error) {
         throw new Error(data.error);
       }
@@ -527,12 +566,7 @@ You're not a therapist - you're a friendly guide helping people find the right s
       console.error('API unavailable, using local FAQ:', error);
       // Use local FAQ knowledge base as fallback
       const faqResponse = findFaqResponse(userInput);
-      const assistantMessage = {
-        role: 'assistant',
-        content: faqResponse,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, assistantMessage]);
+      await animateAssistantResponse(sanitizeAssistantText(faqResponse));
     } finally {
       setIsLoading(false);
     }
@@ -566,6 +600,12 @@ You're not a therapist - you're a friendly guide helping people find the right s
       timestamp: new Date()
     };
     setMessages(prev => [...prev, langMessage]);
+  };
+
+  const languageMeta = {
+    en: { flag: '🇺🇸', label: 'EN' },
+    es: { flag: '🇪🇸', label: 'ES' },
+    ko: { flag: '🇰🇷', label: 'KO' }
   };
 
   return (
@@ -683,7 +723,38 @@ You're not a therapist - you're a friendly guide helping people find the right s
                 )}
               </div>
             </div>
-            {!isEmbedMode && (
+            {isEmbedMode ? (
+              <button
+                onClick={toggleLanguage}
+                title={`Language: ${languageMeta[language].label}`}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.22)',
+                  border: '1px solid rgba(255, 255, 255, 0.45)',
+                  borderRadius: '10px',
+                  padding: '6px 10px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  color: '#ffffff',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  fontFamily: '"Inter", sans-serif',
+                  lineHeight: 1,
+                  transition: 'all 0.2s ease',
+                  backdropFilter: 'blur(10px)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.34)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.22)';
+                }}
+              >
+                <span aria-hidden="true">{languageMeta[language].flag}</span>
+                <span>{languageMeta[language].label}</span>
+              </button>
+            ) : (
               <button
                 onClick={toggleLanguage}
                 style={{
