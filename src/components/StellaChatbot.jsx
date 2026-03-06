@@ -401,6 +401,7 @@ const findFaqResponse = (userInput) => {
 };
 
 export default function StellaChatbot() {
+  const isEmbedMode = new URLSearchParams(window.location.search).get('embed') === '1';
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -570,59 +571,63 @@ You're not a therapist - you're a friendly guide helping people find the right s
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #fef5e7 0%, #fff8e1 50%, #fff3e0 100%)',
+      background: isEmbedMode ? 'transparent' : 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 50%, #ddd6fe 100%)',
       fontFamily: '"Literata", "Georgia", serif',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '20px',
+      padding: isEmbedMode ? '0' : '20px',
       position: 'relative',
       overflow: 'hidden'
     }}>
-      {/* Background decorative elements */}
-      <div style={{
-        position: 'absolute',
-        top: '-10%',
-        right: '-5%',
-        width: '400px',
-        height: '400px',
-        background: 'radial-gradient(circle, rgba(255, 138, 101, 0.15) 0%, transparent 70%)',
-        borderRadius: '50%',
-        filter: 'blur(60px)',
-        pointerEvents: 'none'
-      }} />
-      <div style={{
-        position: 'absolute',
-        bottom: '-10%',
-        left: '-5%',
-        width: '350px',
-        height: '350px',
-        background: 'radial-gradient(circle, rgba(255, 183, 77, 0.15) 0%, transparent 70%)',
-        borderRadius: '50%',
-        filter: 'blur(60px)',
-        pointerEvents: 'none'
-      }} />
+      {!isEmbedMode && (
+        <>
+          {/* Background decorative elements */}
+          <div style={{
+            position: 'absolute',
+            top: '-10%',
+            right: '-5%',
+            width: '400px',
+            height: '400px',
+            background: 'radial-gradient(circle, rgba(139, 92, 246, 0.16) 0%, transparent 70%)',
+            borderRadius: '50%',
+            filter: 'blur(60px)',
+            pointerEvents: 'none'
+          }} />
+          <div style={{
+            position: 'absolute',
+            bottom: '-10%',
+            left: '-5%',
+            width: '350px',
+            height: '350px',
+            background: 'radial-gradient(circle, rgba(124, 58, 237, 0.14) 0%, transparent 70%)',
+            borderRadius: '50%',
+            filter: 'blur(60px)',
+            pointerEvents: 'none'
+          }} />
+        </>
+      )}
 
       {/* Main chat container */}
       <div style={{
         width: '100%',
-        maxWidth: '800px',
-        height: '85vh',
-        maxHeight: '700px',
-        background: 'rgba(255, 255, 255, 0.95)',
-        backdropFilter: 'blur(20px)',
-        borderRadius: '24px',
-        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.12), 0 8px 20px rgba(0, 0, 0, 0.08)',
+        maxWidth: isEmbedMode ? 'none' : '800px',
+        height: isEmbedMode ? '100vh' : '85vh',
+        maxHeight: isEmbedMode ? 'none' : '700px',
+        background: isEmbedMode ? 'transparent' : 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: isEmbedMode ? 'none' : 'blur(20px)',
+        borderRadius: isEmbedMode ? '0' : '24px',
+        boxShadow: isEmbedMode ? 'none' : '0 20px 60px rgba(0, 0, 0, 0.12), 0 8px 20px rgba(0, 0, 0, 0.08)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        border: '1px solid rgba(255, 138, 101, 0.2)',
+        border: isEmbedMode ? 'none' : '1px solid rgba(139, 92, 246, 0.24)',
         position: 'relative'
       }}>
         {/* Header */}
         <div style={{
-          background: 'linear-gradient(135deg, #ff8a65 0%, #ff7043 100%)',
-          padding: '24px 28px',
+          background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+          padding: isEmbedMode ? '16px 20px' : '24px 28px',
           borderBottom: '3px solid rgba(255, 255, 255, 0.3)',
           position: 'relative',
           overflow: 'hidden'
@@ -640,23 +645,25 @@ You're not a therapist - you're a friendly guide helping people find the right s
           }} />
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{
-                width: '56px',
-                height: '56px',
-                background: 'linear-gradient(135deg, #fff 0%, #fff9f0 100%)',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                border: '3px solid rgba(255, 255, 255, 0.5)'
-              }}>
-                <Heart style={{ color: '#ff6f47', fill: '#ff6f47' }} size={28} />
-              </div>
+              {!isEmbedMode && (
+                <div style={{
+                  width: '56px',
+                  height: '56px',
+                  background: 'linear-gradient(135deg, #fff 0%, #fff9f0 100%)',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                  border: '3px solid rgba(255, 255, 255, 0.5)'
+                }}>
+                  <Heart style={{ color: '#7c3aed', fill: '#7c3aed' }} size={28} />
+                </div>
+              )}
               <div>
                 <h1 style={{
                   margin: 0,
-                  fontSize: '26px',
+                  fontSize: isEmbedMode ? '22px' : '26px',
                   fontWeight: 700,
                   color: '#ffffff',
                   letterSpacing: '-0.5px',
@@ -664,46 +671,50 @@ You're not a therapist - you're a friendly guide helping people find the right s
                 }}>
                   Stella
                 </h1>
-                <p style={{
-                  margin: '2px 0 0 0',
-                  fontSize: '14px',
-                  color: 'rgba(255, 255, 255, 0.95)',
-                  fontFamily: '"Inter", sans-serif'
-                }}>
-                  Casa dela Familia Support
-                </p>
+                {!isEmbedMode && (
+                  <p style={{
+                    margin: '2px 0 0 0',
+                    fontSize: '14px',
+                    color: 'rgba(255, 255, 255, 0.95)',
+                    fontFamily: '"Inter", sans-serif'
+                  }}>
+                    Casa dela Familia Support
+                  </p>
+                )}
               </div>
             </div>
-            <button
-              onClick={toggleLanguage}
-              style={{
-                background: 'rgba(255, 255, 255, 0.25)',
-                border: '2px solid rgba(255, 255, 255, 0.4)',
-                borderRadius: '12px',
-                padding: '10px 16px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                color: '#ffffff',
-                fontSize: '14px',
-                fontWeight: 600,
-                fontFamily: '"Inter", sans-serif',
-                transition: 'all 0.3s ease',
-                backdropFilter: 'blur(10px)'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.35)';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              <Languages size={18} />
-              {language === 'en' ? 'ES' : language === 'es' ? '한' : 'EN'}
-            </button>
+            {!isEmbedMode && (
+              <button
+                onClick={toggleLanguage}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.25)',
+                  border: '2px solid rgba(255, 255, 255, 0.4)',
+                  borderRadius: '12px',
+                  padding: '10px 16px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: '#ffffff',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  fontFamily: '"Inter", sans-serif',
+                  transition: 'all 0.3s ease',
+                  backdropFilter: 'blur(10px)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.35)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                <Languages size={18} />
+                {language === 'en' ? 'ES' : language === 'es' ? '한' : 'EN'}
+              </button>
+            )}
           </div>
         </div>
 
@@ -717,7 +728,9 @@ You're not a therapist - you're a friendly guide helping people find the right s
             display: 'flex',
             flexDirection: 'column',
             gap: '20px',
-            background: 'linear-gradient(to bottom, rgba(255, 245, 231, 0.3) 0%, rgba(255, 248, 225, 0.5) 100%)'
+            background: isEmbedMode
+              ? 'transparent'
+              : 'linear-gradient(to bottom, rgba(255, 245, 231, 0.3) 0%, rgba(255, 248, 225, 0.5) 100%)'
           }}
         >
           {messages.map((message, index) => (
@@ -737,13 +750,13 @@ You're not a therapist - you're a friendly guide helping people find the right s
                   padding: '16px 20px',
                   borderRadius: message.role === 'user' ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
                   background: message.role === 'user'
-                    ? 'linear-gradient(135deg, #ff8a65 0%, #ff7043 100%)'
+                    ? 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)'
                     : 'linear-gradient(135deg, #ffffff 0%, #fff9f0 100%)',
                   color: message.role === 'user' ? '#ffffff' : '#2d2d2d',
                   boxShadow: message.role === 'user'
-                    ? '0 4px 16px rgba(255, 112, 67, 0.3)'
+                    ? '0 4px 16px rgba(109, 40, 217, 0.32)'
                     : '0 4px 16px rgba(0, 0, 0, 0.08)',
-                  border: message.role === 'user' ? 'none' : '1px solid rgba(255, 138, 101, 0.15)',
+                  border: message.role === 'user' ? 'none' : '1px solid rgba(139, 92, 246, 0.18)',
                   fontSize: '15px',
                   lineHeight: '1.6',
                   fontFamily: '"Inter", sans-serif',
@@ -761,7 +774,7 @@ You're not a therapist - you're a friendly guide helping people find the right s
                 padding: '16px 20px',
                 borderRadius: '20px 20px 20px 4px',
                 background: 'linear-gradient(135deg, #ffffff 0%, #fff9f0 100%)',
-                border: '1px solid rgba(255, 138, 101, 0.15)',
+                border: '1px solid rgba(139, 92, 246, 0.18)',
                 boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
                 display: 'flex',
                 gap: '8px',
@@ -771,21 +784,21 @@ You're not a therapist - you're a friendly guide helping people find the right s
                   width: '8px',
                   height: '8px',
                   borderRadius: '50%',
-                  background: '#ff8a65',
+                  background: '#8b5cf6',
                   animation: 'typing 1.4s infinite'
                 }} />
                 <div className="typing-dot" style={{
                   width: '8px',
                   height: '8px',
                   borderRadius: '50%',
-                  background: '#ff8a65',
+                  background: '#8b5cf6',
                   animation: 'typing 1.4s infinite 0.2s'
                 }} />
                 <div className="typing-dot" style={{
                   width: '8px',
                   height: '8px',
                   borderRadius: '50%',
-                  background: '#ff8a65',
+                  background: '#8b5cf6',
                   animation: 'typing 1.4s infinite 0.4s'
                 }} />
               </div>
@@ -797,8 +810,10 @@ You're not a therapist - you're a friendly guide helping people find the right s
         {/* Input area */}
         <div style={{
           padding: '20px 24px',
-          background: 'linear-gradient(to top, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.95) 100%)',
-          borderTop: '1px solid rgba(255, 138, 101, 0.15)',
+          background: isEmbedMode
+            ? 'transparent'
+            : 'linear-gradient(to top, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.95) 100%)',
+          borderTop: '1px solid rgba(139, 92, 246, 0.18)',
           backdropFilter: 'blur(20px)'
         }}>
           <div style={{
@@ -816,7 +831,7 @@ You're not a therapist - you're a friendly guide helping people find the right s
                 flex: 1,
                 padding: '14px 18px',
                 borderRadius: '16px',
-                border: '2px solid rgba(255, 138, 101, 0.25)',
+                border: '2px solid rgba(139, 92, 246, 0.28)',
                 fontSize: '15px',
                 fontFamily: '"Inter", sans-serif',
                 resize: 'none',
@@ -829,11 +844,11 @@ You're not a therapist - you're a friendly guide helping people find the right s
                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
               }}
               onFocus={(e) => {
-                e.target.style.borderColor = '#ff8a65';
-                e.target.style.boxShadow = '0 4px 16px rgba(255, 138, 101, 0.2)';
+                e.target.style.borderColor = '#8b5cf6';
+                e.target.style.boxShadow = '0 4px 16px rgba(139, 92, 246, 0.25)';
               }}
               onBlur={(e) => {
-                e.target.style.borderColor = 'rgba(255, 138, 101, 0.25)';
+                e.target.style.borderColor = 'rgba(139, 92, 246, 0.28)';
                 e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.05)';
               }}
             />
@@ -843,7 +858,7 @@ You're not a therapist - you're a friendly guide helping people find the right s
               style={{
                 background: isLoading || !input.trim()
                   ? 'linear-gradient(135deg, #cccccc 0%, #b0b0b0 100%)'
-                  : 'linear-gradient(135deg, #ff8a65 0%, #ff7043 100%)',
+                  : 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
                 border: 'none',
                 borderRadius: '16px',
                 padding: '14px 20px',
@@ -854,21 +869,21 @@ You're not a therapist - you're a friendly guide helping people find the right s
                 transition: 'all 0.3s ease',
                 boxShadow: isLoading || !input.trim()
                   ? 'none'
-                  : '0 4px 16px rgba(255, 112, 67, 0.3)',
+                  : '0 4px 16px rgba(109, 40, 217, 0.35)',
                 minWidth: '52px',
                 minHeight: '52px'
               }}
               onMouseEnter={(e) => {
                 if (!isLoading && input.trim()) {
                   e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(255, 112, 67, 0.4)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(109, 40, 217, 0.45)';
                 }
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = 'translateY(0)';
                 e.currentTarget.style.boxShadow = isLoading || !input.trim()
                   ? 'none'
-                  : '0 4px 16px rgba(255, 112, 67, 0.3)';
+                  : '0 4px 16px rgba(109, 40, 217, 0.35)';
               }}
             >
               <Send style={{ color: '#ffffff' }} size={20} />
@@ -925,17 +940,17 @@ You're not a therapist - you're a friendly guide helping people find the right s
         }
         
         div::-webkit-scrollbar-track {
-          background: rgba(255, 138, 101, 0.05);
+          background: rgba(139, 92, 246, 0.08);
           border-radius: 10px;
         }
         
         div::-webkit-scrollbar-thumb {
-          background: linear-gradient(135deg, #ff8a65 0%, #ff7043 100%);
+          background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
           border-radius: 10px;
         }
         
         div::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(135deg, #ff7043 0%, #f4511e 100%);
+          background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%);
         }
       `}</style>
     </div>

@@ -4,7 +4,7 @@ A compassionate AI support companion for Casa dela Familia, providing informatio
 
 ## Features
 
-- 🤖 AI-powered chatbot using Claude (Anthropic)
+- 🤖 AI-powered chatbot using Google Gemini
 - 🌐 Bilingual support (English/Spanish)
 - 💜 Warm, trauma-informed responses
 - 📱 Responsive, modern UI
@@ -15,7 +15,7 @@ A compassionate AI support companion for Casa dela Familia, providing informatio
 ### Prerequisites
 
 - Node.js 18+ 
-- An Anthropic API key ([Get one here](https://console.anthropic.com/))
+- A Google Gemini API key ([Get one here](https://aistudio.google.com/app/apikey))
 
 ### Installation
 
@@ -31,10 +31,10 @@ npm install
 cp .env.example .env
 ```
 
-3. Add your Anthropic API key to `.env`:
+3. Add your Gemini API key to `.env`:
 
 ```
-ANTHROPIC_API_KEY=your_api_key_here
+GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
 4. Start the development server:
@@ -85,7 +85,7 @@ npm run build
 2. Set environment variables on your server:
 
 ```bash
-export ANTHROPIC_API_KEY=your_api_key
+export GEMINI_API_KEY=your_gemini_api_key
 export NODE_ENV=production
 export PORT=3001
 ```
