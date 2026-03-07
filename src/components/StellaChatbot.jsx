@@ -104,10 +104,6 @@ const faqDataEn = [
     response: "We provide counseling services for all ages - children, youth, adults, and families. Our therapists specialize in working with people at every stage of life, and we offer both individual and family therapy options."
   },
   {
-    keywords: ['type', 'counseling', 'therapy', 'services', 'what do you offer'],
-    response: "We offer a range of services including:\n\n• Individual therapy\n• Family therapy\n• Empowering support groups\n• Crisis intervention\n• Trauma-focused care\n• Domestic violence support\n• Sexual assault services\n• Immigration evaluations\n\nAll services are provided by licensed professionals in English and Spanish."
-  },
-  {
     keywords: ['domestic violence', 'abuse', 'dart', 'violent', 'partner'],
     response: "Yes, we offer specialized support for domestic violence survivors. Our DART (Domestic Abuse Response Team) program pairs certified counselors with specially trained police units for immediate crisis intervention. We provide safe, confidential support to help you through this difficult time. If you're in immediate danger, please call 911. Otherwise, reach us at (877) 611-2272."
   },
