@@ -51,14 +51,12 @@ function extractSections(lines) {
 
   const pushCurrent = (endLine) => {
     const rawText = normalizeWhitespace(current.lines.join('\n'));
-    if (rawText) {
-      sections.push({
-        title: current.title,
-        startLine: current.startLine,
-        endLine,
-        text: rawText,
-      });
-    }
+    sections.push({
+      title: current.title,
+      startLine: current.startLine,
+      endLine,
+      text: rawText,
+    });
   };
 
   for (let i = 0; i < lines.length; i += 1) {
@@ -91,7 +89,20 @@ function extractSections(lines) {
   }
 
   pushCurrent(lines.length);
-  return sections;
+
+  const merged = [];
+  for (const section of sections) {
+    if (!section.text.trim()) {
+      if (merged.length > 0) {
+        const prev = merged[merged.length - 1];
+        prev.text += '\n\n' + section.title;
+        prev.endLine = section.endLine;
+      }
+    } else {
+      merged.push(section);
+    }
+  }
+  return merged;
 }
 
 function splitIntoUnits(text) {
@@ -182,16 +193,31 @@ function buildChunksFromUnits(units, options) {
   }
   pushChunk();
 
-  if (chunks.length <= 1 || overlapChars <= 0) return chunks;
+  const MIN_CHUNK_CHARS = 80;
+  const merged = [];
+  for (let i = 0; i < chunks.length; i += 1) {
+    if (chunks[i].length < MIN_CHUNK_CHARS && i + 1 < chunks.length) {
+      chunks[i + 1] = `${chunks[i]}\n\n${chunks[i + 1]}`;
+    } else {
+      merged.push(chunks[i]);
+    }
+  }
+  const finalChunks = merged;
+
+  if (finalChunks.length <= 1 || overlapChars <= 0) return finalChunks;
 
   const withOverlap = [];
-  for (let i = 0; i < chunks.length; i += 1) {
+  for (let i = 0; i < finalChunks.length; i += 1) {
     if (i === 0) {
-      withOverlap.push(chunks[i]);
+      withOverlap.push(finalChunks[i]);
       continue;
     }
-    const prevTail = chunks[i - 1].slice(-overlapChars);
-    withOverlap.push(`${prevTail}\n\n${chunks[i]}`);
+    let prevTail = finalChunks[i - 1].slice(-overlapChars);
+    const firstSpace = prevTail.indexOf(' ');
+    if (firstSpace > 0) {
+      prevTail = prevTail.slice(firstSpace + 1);
+    }
+    withOverlap.push(`${prevTail}\n\n${finalChunks[i]}`);
   }
   return withOverlap;
 }
@@ -240,6 +266,13 @@ async function main() {
   const raw = await readFile(SOURCE_PATH, 'utf8');
   const lines = raw.split(/\r?\n/);
   const sections = extractSections(lines);
+
+  for (const section of sections) {
+    if (section.title === 'Contacting your Therapist' &&
+        section.text.includes('you have the right to:')) {
+      section.title = 'Patient Rights and Responsibilities';
+    }
+  }
 
   const chunks = [];
   for (const section of sections) {

@@ -418,6 +418,176 @@ function scoreChunk(queryTokens, queryTextLower, chunk) {
 
 const KB_SEARCH_CHUNKS = KB_CHUNKS.map(buildChunkSearchData);
 
+const CRISIS_PATTERNS = [
+  // English
+  'i want to die',
+  'i want to kill myself',
+  'i wanna kill myself',
+  "i'm gonna kill myself",
+  'im gonna kill myself',
+  'i feel like killing myself',
+  "i don't want to live",
+  'i dont want to live',
+  "i don't wanna live",
+  'i dont wanna live',
+  'i cannot go on',
+  "i can't go on",
+  'i cant go on',
+  'i want to hurt myself',
+  'i wanna hurt myself',
+  'i am going to hurt myself',
+  'i am suicidal',
+  'i am thinking about suicide',
+  'i want to end my life',
+  'i want to disappear',
+  'i am going to kill someone',
+  'i want to hurt someone',
+  'i am in danger',
+  'i am being abused',
+  'help me now',
+  'i need immediate help',
+  // Spanish
+  'quiero morir',
+  'quiero suicidarme',
+  'no quiero vivir',
+  'quiero hacerme dano',
+  'quiero hacerme daño',
+  'quiero desaparecer',
+  // Korean
+  '죽고 싶어요',
+  '자살하고 싶어요',
+  '살고 싶지 않아요',
+  '나 자신을 해치고 싶어요',
+];
+
+const DISTRESS_PATTERNS = [
+  // English
+  'i cant take this anymore',
+  "i can't take this anymore",
+  'i feel hopeless',
+  'nothing matters',
+  'everyone would be better off without me',
+  'i feel trapped',
+  'i want everything to stop',
+  "there's no point anymore",
+  // Spanish
+  'no puedo mas',
+  'me siento sin esperanza',
+  'nada importa',
+  'todos estarian mejor sin mi',
+  'quiero que todo se detenga',
+  // Korean
+  '더는 못 버티겠어요',
+  '희망이 없어요',
+  '아무 의미가 없어요',
+  '모든 걸 멈추고 싶어요',
+];
+
+function detectLanguage(text) {
+  const value = String(text || '');
+  const koreanRegex = /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/;
+  const spanishIndicators = /[áéíóúüñ¿¡]|(\b(hola|qué|como|cómo|dónde|cuando|cuándo|por qué|gracias|ayuda|necesito|quiero|tengo|puedo)\b)/i;
+  if (koreanRegex.test(value)) return 'ko';
+  if (spanishIndicators.test(value)) return 'es';
+  return 'en';
+}
+
+function normalizeSafetyText(text) {
+  return String(text || '')
+    .normalize('NFD')
+    .toLowerCase()
+    .replace(/[’`]/g, "'")
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[.,!?;:()[\]{}"“”]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function detectCrisis(text) {
+  const content = normalizeSafetyText(text);
+  if (!content) return false;
+
+  for (const phrase of CRISIS_PATTERNS) {
+    if (content.includes(normalizeSafetyText(phrase))) return true;
+  }
+  return false;
+}
+
+function detectDistress(text) {
+  const content = normalizeSafetyText(text);
+  if (!content) return false;
+
+  for (const phrase of DISTRESS_PATTERNS) {
+    if (content.includes(normalizeSafetyText(phrase))) return true;
+  }
+  return false;
+}
+
+function detectSafetySignal(text) {
+  const content = String(text || '').trim();
+  if (!content) {
+    return { level: 'none', language: 'en' };
+  }
+
+  const language = detectLanguage(content);
+  if (detectCrisis(content)) return { level: 'crisis', language };
+  if (detectDistress(content)) return { level: 'distress', language };
+  return { level: 'none', language };
+}
+
+function buildCrisisResponse(language) {
+  if (language === 'es') {
+    return [
+      'Siento mucho que estes pasando por algo tan abrumador. Mereces apoyo en este momento.',
+      'Si estas en peligro inmediato, por favor llama al 911.',
+      'Tambien puedes llamar o enviar mensaje al 988 para apoyo inmediato 24/7.',
+      'No tienes que enfrentar esto a solas. No soy terapeuta, pero puedo ayudarte a conectarte con apoyo.',
+    ].join('\n\n');
+  }
+  if (language === 'ko') {
+    return [
+      '지금 정말 많이 힘드실 것 같아요. 지금은 안전이 가장 중요합니다.',
+      '즉각적인 위험이 있다면 지금 바로 911에 전화하세요.',
+      '지금 바로 988로 전화하거나 문자해 24시간 위기 지원을 받으실 수 있습니다.',
+      '혼자 감당하지 않으셔도 됩니다. 저는 치료사는 아니지만, 적절한 지원과 연결되도록 도와드릴 수 있어요.',
+    ].join('\n\n');
+  }
+  return [
+    "I'm really sorry you're going through something this overwhelming. You deserve support right now.",
+    'If you are in immediate danger, please call 911.',
+    'You can also call or text 988 for immediate 24/7 support.',
+    "You don't have to face this alone. I'm not a therapist, but I can help connect you to support.",
+  ].join('\n\n');
+}
+
+function buildDistressResponse(language) {
+  if (language === 'es') {
+    return [
+      'Siento mucho que te sientas asi. Gracias por compartirlo conmigo.',
+      'Cuando todo se siente tan pesado, puede ayudar hablar con alguien que te escuche con cuidado.',
+      'Si quieres, puedo ayudarte a conectarte con Casa de la Familia al (877) 611-2272.',
+      'Si en algun momento sientes peligro inmediato, llama al 911 o al 988.',
+      'No soy terapeuta, pero puedo ayudarte a encontrar apoyo.',
+    ].join('\n\n');
+  }
+  if (language === 'ko') {
+    return [
+      '그렇게 느끼고 계신다니 정말 마음이 무겁습니다. 말씀해 주셔서 감사합니다.',
+      '이런 순간에는 믿을 수 있는 사람과 바로 이야기하는 것이 큰 도움이 될 수 있어요.',
+      '원하시면 Casa de la Familia (877) 611-2272에 연결될 수 있도록 도와드릴게요.',
+      '즉각적인 위험이 느껴지면 911 또는 988에 바로 연락하세요.',
+      '저는 치료사는 아니지만, 도움을 받을 수 있도록 안내해 드릴 수 있어요.',
+    ].join('\n\n');
+  }
+  return [
+    "I'm really sorry you're feeling this way, and I'm glad you said something.",
+    'When things feel this heavy, talking to someone right away can help.',
+    'If you want, I can help connect you with Casa de la Familia at (877) 611-2272.',
+    'If you feel in immediate danger at any point, call 911 or 988.',
+    "I'm not a therapist, but I can help you find support.",
+  ].join('\n\n');
+}
+
 function isDebugEnabled(env) {
   const value = String(
     env?.DEBUG_RETRIEVAL || env?.DEBUG_DID_YOU_MEAN || env?.NODE_ENV || ''
@@ -620,12 +790,30 @@ function buildRetrievedContext(topChunks) {
   return `RETRIEVED KNOWLEDGE BASE SNIPPETS (highest relevance first):\n\n${blocks.join('\n\n---\n\n')}`;
 }
 
-function buildKbOnlyFallback(latestUserMessage) {
-  const prompt = String(latestUserMessage || '').trim();
-  const intro = prompt
-    ? `I could not find a reliable answer in the current knowledge base for: "${prompt}".`
-    : 'I could not find a reliable answer in the current knowledge base for that question.';
-  return `${intro} Please contact Casa de la Familia at (877) 611-2272 for direct support.`;
+function shouldGeminiTakeoverForHardQuestion(query, retrievalResult) {
+  const queryText = String(query || '').toLowerCase();
+  const retrieval = retrievalResult?.debug?.retrieval || {};
+  const candidates = Array.isArray(retrieval.candidates) ? retrieval.candidates : [];
+  const topCandidate = candidates[0] || null;
+  const hasKbMatch = (retrievalResult?.selected?.length || 0) > 0;
+  if (!hasKbMatch) return true;
+
+  const meaningfulTokenCount = tokenize(queryText)
+    .filter((token) => !STOPWORDS.has(token))
+    .length;
+
+  const hasReasoningCue = /\b(why|how|explain|difference|compare|versus|vs|exception|edge case|legal|law|policy|complex|hard|unclear|nuance|nuanced)\b/.test(queryText);
+  const weakTopSimilarity = !topCandidate || Number(topCandidate.similarity || 0) < 0.78;
+  const weakTopScore = !topCandidate || Number(topCandidate.score || 0) < 3.5;
+  const fallbackRanking = retrieval.rankingMode === 'fallback';
+  const complexQuestion = meaningfulTokenCount >= 8 || hasReasoningCue;
+  const moderateQuestion = meaningfulTokenCount >= 5;
+
+  if ((fallbackRanking && moderateQuestion) || (complexQuestion && (weakTopSimilarity || weakTopScore))) {
+    return true;
+  }
+
+  return weakTopSimilarity && meaningfulTokenCount >= 6;
 }
 
 export async function onRequestPost(context) {
@@ -648,32 +836,52 @@ export async function onRequestPost(context) {
     
     const normalizedSystem = typeof system === 'string' ? system.trim() : '';
     const latestUserMessage = getLatestUserMessage(messages);
-    const retrievalResult = retrieveTopChunks(latestUserMessage, KB_SEARCH_CHUNKS);
-    const topChunks = retrievalResult.selected;
-    const retrievedContext = buildRetrievedContext(topChunks);
+    const safetySignal = detectSafetySignal(latestUserMessage);
 
-    if (!topChunks.length) {
-      const kbOnlyFallback = {
+    if (safetySignal.level === 'crisis') {
+      return new Response(JSON.stringify({
         content: [{
           type: 'text',
-          text: buildKbOnlyFallback(latestUserMessage)
-        }]
-      };
-      if (isDebugEnabled(context.env)) {
-        kbOnlyFallback.debug = retrievalResult.debug;
-      }
-      return new Response(JSON.stringify(kbOnlyFallback), {
+          text: buildCrisisResponse(safetySignal.language),
+        }],
+        crisisDetected: true,
+      }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    if (safetySignal.level === 'distress') {
+      return new Response(JSON.stringify({
+        content: [{
+          type: 'text',
+          text: buildDistressResponse(safetySignal.language),
+        }],
+        distressDetected: true,
+      }), {
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    const combinedInstruction = [
-      normalizedSystem,
-      retrievedContext,
-      'Answer using only the retrieved knowledge base snippets above.',
-      'Do not rely on general background knowledge or reusable Casa de la Familia marketing blurbs.',
-      'If the snippets are insufficient for any part of the question, say you do not have enough information in the knowledge base and suggest contacting Casa de la Familia at (877) 611-2272.'
-    ].filter(Boolean).join('\n\n');
+    const retrievalResult = retrieveTopChunks(latestUserMessage, KB_SEARCH_CHUNKS);
+    const topChunks = retrievalResult.selected;
+    const retrievedContext = buildRetrievedContext(topChunks);
+
+    const hasKbMatch = topChunks.length > 0;
+    const geminiTakeover = shouldGeminiTakeoverForHardQuestion(latestUserMessage, retrievalResult);
+    const combinedInstruction = (hasKbMatch && !geminiTakeover)
+      ? [
+        normalizedSystem,
+        retrievedContext,
+        'Use retrieved snippets as the primary factual source.',
+        'If the snippets are incomplete, answer only what is clearly supported by them and suggest contacting Casa de la Familia at (877) 611-2272 for policy confirmation.',
+      ].filter(Boolean).join('\n\n')
+      : [
+        normalizedSystem,
+        retrievedContext,
+        hasKbMatch
+          ? 'This appears to be a harder question with low KB confidence. You may take over and answer using broader reasoning and general knowledge, using snippets only as optional context.'
+          : 'No relevant internal KB snippets were matched for this user message. You may answer using your general knowledge as a fallback.',
+        'If the question appears to be policy-, legal-, or care-specific to Casa de la Familia, clearly say the answer may not reflect internal policy and suggest contacting Casa de la Familia at (877) 611-2272.',
+      ].filter(Boolean).join('\n\n');
 
     // Add system instruction and knowledge context as first user message if provided
     if (combinedInstruction) {
@@ -706,7 +914,7 @@ export async function onRequestPost(context) {
           contents: geminiContents,
           generationConfig: {
             maxOutputTokens: 1000,
-            temperature: 0.2,
+            temperature: 0.7,
           }
         })
       }
@@ -734,6 +942,11 @@ export async function onRequestPost(context) {
 
     if (isDebugEnabled(context.env)) {
       geminiResponse.debug = retrievalResult.debug;
+      geminiResponse.debug.retrieval.kbFallbackToGemini = !hasKbMatch;
+      geminiResponse.debug.retrieval.geminiTakeover = geminiTakeover;
+      geminiResponse.debug.retrieval.geminiTakeoverReason = geminiTakeover
+        ? (hasKbMatch ? 'hard-question-low-kb-confidence' : 'no-kb-match')
+        : 'kb-primary';
     }
     
     return new Response(JSON.stringify(geminiResponse), {
