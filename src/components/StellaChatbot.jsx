@@ -1,70 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Heart, Languages } from 'lucide-react';
 
-// Structured knowledge base from kb.md
-
-const kbKnowledge = [
-  {
-  keywords: ['first session', 'what to expect therapy', 'begin therapy'],
-  response: `During your first few sessions, you and your therapist will get to know each other. 
-  The therapist will begin developing a treatment plan and determine the best frequency of visits. 
-  This period also allows you to decide if the therapist feels like the right fit for your needs.`
-  },
-  
-  {
-  keywords: ['therapy effort', 'do i need to participate', 'do i need to work outside therapy'],
-  response: `Psychotherapy requires active participation. 
-  Consistent attendance and working on topics discussed during sessions outside therapy help maximize the benefits of treatment.`
-  },
-  
-  {
-  keywords: ['therapy feelings', 'therapy uncomfortable', 'feel worse during therapy'],
-  response: `It is normal for therapy to bring up uncomfortable emotions such as sadness, anger, guilt, or frustration. 
-  Discussing difficult experiences is part of the healing process and can lead to improved relationships and reduced distress.`
-  },
-  
-  {
-  keywords: ['confidentiality', 'is therapy confidential', 'privacy therapy'],
-  response: `All information shared in therapy sessions is confidential and cannot be disclosed without your written permission except in certain legal situations, such as risk of harm to yourself or others, or suspected abuse.`
-  },
-  
-  {
-  keywords: ['records', 'therapy records', 'can i see my records'],
-  response: `You have the right to review your therapy records or request a summary of them. 
-  Records are typically kept for at least seven years according to professional and legal standards.`
-  },
-  
-  {
-  keywords: ['cancel appointment', 'missed session', 'cancel therapy'],
-  response: `Appointments require at least 48 hours notice for cancellation. 
-  If appointments are missed without notice, they may be considered a no-show and services may be suspended after repeated missed sessions.`
-  },
-  
-  {
-  keywords: ['telehealth', 'online therapy', 'video therapy'],
-  response: `Telehealth allows therapy sessions through phone or video. 
-  You will need a private space, internet connection, and appropriate device. 
-  While telehealth is convenient, some conditions may require in-person care.`
-  },
-  
-  {
-  keywords: ['insurance confidentiality', 'insurance privacy risk'],
-  response: `Submitting therapy claims to insurance may involve sharing limited information about your treatment. 
-  Insurance companies may store this information in their databases, which may carry certain privacy risks.`
-  },
-  
-  {
-  keywords: ['terminate therapy', 'stop therapy', 'end therapy'],
-  response: `You have the right to terminate therapy at any time. 
-  Your therapist may also discuss termination if treatment goals have been reached or if therapy is no longer effective.`
-  },
-  
-  {
-  keywords: ['legal disclosure therapy', 'court records therapy'],
-  response: `Therapy records are confidential but may be disclosed if required by law or court order. 
-  In some legal cases, a judge may require records or testimony from a therapist.`
-  }
-  ];
 // FAQ Knowledge Base for offline responses - English
 const faqDataEn = [
   {
@@ -199,6 +135,42 @@ const faqDataEn = [
   {
     keywords: ['case management', 'advocacy', 'long term', 'ongoing support'],
     response: "Beyond immediate crisis care, we provide ongoing support:\n\n📋 **Case Management**\n• Personalized care coordination\n• Help navigating systems and resources\n• Regular check-ins and progress support\n\n🗣️ **Advocacy Services**\n• Support with legal processes\n• Help accessing community resources\n• Assistance with housing, employment referrals\n\n🧠 **Long-Term Mental Health Care**\n• Continued therapy as needed\n• Support groups for ongoing healing\n• Family counseling services\n\nWe're committed to your long-term stability and well-being, not just crisis intervention. Call (877) 611-2272 to learn more."
+  },
+  {
+    keywords: ['first session', 'what to expect', 'begin therapy', 'starting therapy', 'new patient', 'first time therapy'],
+    response: "During your first few sessions, you and your therapist will get to know each other. They'll put together a treatment plan and figure out how often you should meet. It's also a chance for you to decide if the therapist feels like the right fit. If you have any concerns along the way, just let your case manager or therapist know. Call (877) 611-2272 to get started."
+  },
+  {
+    keywords: ['therapy effort', 'participate', 'active role', 'work outside therapy', 'homework therapy'],
+    response: "Therapy works best when you're actively involved. That means being open and honest during sessions, and also working on things your therapist discusses with you between appointments. Consistent attendance and effort outside of sessions will help you get the most out of treatment."
+  },
+  {
+    keywords: ['therapy feelings', 'uncomfortable', 'feel worse', 'difficult emotions', 'therapy painful', 'therapy hard'],
+    response: "It's completely normal for therapy to bring up tough emotions like sadness, anger, guilt, or frustration. Talking about difficult experiences is part of the healing process. If those feelings come up, let your therapist know - therapy has been shown to help people who stick with it, and your therapist can help you work through it."
+  },
+  {
+    keywords: ['confidentiality', 'is therapy confidential', 'privacy therapy', 'who knows', 'therapy secret'],
+    response: "Everything you share in therapy is confidential and cannot be disclosed without your written permission. There are a few legal exceptions - like if there is a risk of harm to yourself or others, or suspected abuse of a child, elder, or dependent. Your therapist can explain these limits in more detail."
+  },
+  {
+    keywords: ['records', 'therapy records', 'see my records', 'access records', 'how long kept'],
+    response: "You have the right to review your therapy records or request a summary at any time. Records are kept for at least 7 years as required by California law. Emails, texts, and faxes that are clinically relevant also become part of your record. If you'd like to access your records, just ask your therapist or the administration."
+  },
+  {
+    keywords: ['cancel appointment', 'missed session', 'no show', 'cancel therapy', 'reschedule appointment', 'missed appointment'],
+    response: "You'll need to give at least 48 hours notice to cancel an appointment. If you miss without notice, it counts as a no-show. After a second no-show, services may be suspended - but you can re-enroll by signing a reinstatement letter. To cancel or reschedule, call (877) 611-2272."
+  },
+  {
+    keywords: ['insurance confidentiality', 'insurance privacy', 'insurance risk', 'claims privacy'],
+    response: "If you submit therapy claims to insurance, some limited information about your treatment may be shared with your carrier. Casa de la Familia will only share the minimum necessary information. Just be aware that submitting mental health claims can carry certain privacy risks since that data may be stored in insurance company databases."
+  },
+  {
+    keywords: ['terminate therapy', 'stop therapy', 'end therapy', 'quit therapy', 'leave therapy'],
+    response: "You can stop therapy at any time - that's your right. If you do decide to end treatment, it's helpful to let your therapist know so you can review your progress together. If you miss three sessions in a row or don't schedule for four weeks, it's assumed you've taken a break. You're always welcome to come back whenever you're ready."
+  },
+  {
+    keywords: ['legal disclosure', 'court records', 'subpoena therapy', 'court order', 'judge records'],
+    response: "Your therapy records are generally confidential, but in some cases a judge can order their release or require a therapist to testify. If legal disclosure comes up, your clinician will try to discuss the risks and benefits with you first. Disclosing therapy records in legal cases can have serious consequences, so it's important to talk it through."
   }
 ];
 
@@ -299,6 +271,42 @@ const faqDataEs = [
   {
     keywords: ['gracias', 'agradezco', 'te lo agradezco'],
     response: "¡De nada! Recuerda, comunicarse requiere valentía, y es un honor poder apoyarte. Si tienes otras preguntas o necesitas hablar con alguien, por favor llámanos al (877) 611-2272. Cuídate mucho. 💜"
+  },
+  {
+    keywords: ['primera sesión', 'qué esperar', 'empezar terapia', 'comenzar terapia', 'nuevo paciente', 'primera vez'],
+    response: "Durante tus primeras sesiones, tú y tu terapeuta se conocerán. El terapeuta creará un plan de tratamiento y determinará la frecuencia óptima de tus visitas. También es una oportunidad para que tú decidas si el terapeuta es la persona adecuada para ti. Si tienes alguna inquietud, comunícate con tu administrador de caso o terapeuta. Llama al (877) 611-2272 para comenzar."
+  },
+  {
+    keywords: ['esfuerzo terapia', 'participar', 'rol activo', 'trabajar fuera de terapia'],
+    response: "La terapia funciona mejor cuando participas activamente. Eso significa ser abierto y honesto durante las sesiones, y también trabajar en los temas que tu terapeuta discute contigo entre citas. La asistencia constante y el esfuerzo fuera de las sesiones te ayudarán a obtener el máximo beneficio del tratamiento."
+  },
+  {
+    keywords: ['sentimientos terapia', 'incómodo', 'sentirse peor', 'emociones difíciles', 'terapia difícil'],
+    response: "Es completamente normal que la terapia traiga emociones difíciles como tristeza, enojo, culpa o frustración. Hablar sobre experiencias difíciles es parte del proceso de sanación. Si esos sentimientos surgen, díselo a tu terapeuta - la terapia ha demostrado ayudar a las personas que perseveran."
+  },
+  {
+    keywords: ['confidencialidad', 'es confidencial la terapia', 'privacidad terapia', 'secreto terapia'],
+    response: "Todo lo que compartes en terapia es confidencial y no puede ser revelado sin tu permiso escrito. Hay algunas excepciones legales, como si hay riesgo de daño a ti mismo o a otros, o sospecha de abuso de un menor, anciano o dependiente. Tu terapeuta puede explicarte estos límites con más detalle."
+  },
+  {
+    keywords: ['expediente', 'registros terapia', 'ver mis registros', 'acceso registros', 'historial'],
+    response: "Tienes derecho a revisar tus registros de terapia o solicitar un resumen en cualquier momento. Los registros se mantienen por al menos 7 años según lo requiere la ley de California. Los correos electrónicos, textos y faxes clínicamente relevantes también forman parte de tu expediente."
+  },
+  {
+    keywords: ['cancelar cita', 'sesión perdida', 'falta', 'cancelar terapia', 'reprogramar cita'],
+    response: "Necesitas dar al menos 48 horas de aviso para cancelar una cita. Si faltas sin aviso, cuenta como inasistencia. Después de una segunda inasistencia, los servicios pueden ser suspendidos, pero puedes reinscribirte firmando una carta de reintegración. Para cancelar o reprogramar, llama al (877) 611-2272."
+  },
+  {
+    keywords: ['seguro confidencialidad', 'privacidad seguro', 'riesgo seguro', 'reclamaciones privacidad'],
+    response: "Si presentas reclamaciones de terapia al seguro, se puede compartir información limitada sobre tu tratamiento con tu aseguradora. Casa de la Familia solo compartirá la información mínima necesaria. Ten en cuenta que presentar reclamaciones de salud mental puede conllevar ciertos riesgos de privacidad."
+  },
+  {
+    keywords: ['terminar terapia', 'dejar terapia', 'parar terapia', 'finalizar terapia'],
+    response: "Puedes dejar la terapia en cualquier momento - es tu derecho. Si decides terminar el tratamiento, es útil informar a tu terapeuta para que puedan revisar tu progreso juntos. Si faltas tres sesiones seguidas o no programas una cita por cuatro semanas, se asumirá que has tomado un descanso. Siempre eres bienvenido/a a regresar."
+  },
+  {
+    keywords: ['divulgación legal', 'registros tribunal', 'citación terapia', 'orden judicial'],
+    response: "Tus registros de terapia son generalmente confidenciales, pero en algunos casos un juez puede ordenar su divulgación o requerir que un terapeuta testifique. Si surge una divulgación legal, tu clínico intentará discutir los riesgos y beneficios contigo primero."
   }
 ];
 
@@ -399,6 +407,42 @@ const faqDataKo = [
   {
     keywords: ['감사', '고마워', '고맙습니다'],
     response: "천만에요! 연락하는 것은 용기가 필요한 일이며, 지원해 드릴 수 있어 영광입니다. 다른 질문이 있거나 누군가와 이야기해야 한다면 (877) 611-2272로 전화해 주세요. 자신을 잘 돌보세요. 💜"
+  },
+  {
+    keywords: ['첫 세션', '첫 상담', '기대할 점', '치료 시작', '새 환자', '처음'],
+    response: "첫 몇 번의 세션에서는 치료사와 서로 알아가는 시간을 갖게 됩니다. 치료사가 치료 계획을 세우고 방문 빈도를 결정할 것입니다. 이 기간은 치료사가 나에게 맞는지 판단할 기회이기도 합니다. 우려사항이 있으면 케이스 매니저나 치료사에게 알려주세요. 시작하려면 (877) 611-2272로 전화하세요."
+  },
+  {
+    keywords: ['치료 노력', '참여', '적극적 역할', '치료 외 노력'],
+    response: "치료는 적극적으로 참여할 때 가장 효과적입니다. 세션 중에 솔직하고 개방적이어야 하며, 세션 사이에도 치료사가 논의한 내용을 실천해야 합니다. 꾸준한 출석과 세션 외의 노력이 치료 효과를 극대화합니다."
+  },
+  {
+    keywords: ['치료 감정', '불편', '악화', '어려운 감정', '치료 힘든'],
+    response: "치료 과정에서 슬픔, 분노, 죄책감, 좌절감 같은 어려운 감정이 올라오는 것은 완전히 정상입니다. 어려운 경험에 대해 이야기하는 것은 치유 과정의 일부입니다. 이런 감정이 생기면 치료사에게 알려주세요."
+  },
+  {
+    keywords: ['비밀보장', '치료 비밀', '프라이버시', '비밀 치료'],
+    response: "치료에서 공유하는 모든 내용은 비밀이 보장되며 서면 허가 없이는 공개될 수 없습니다. 자해 또는 타인에 대한 위험이 있거나, 아동/노인/피부양자 학대가 의심되는 경우 등 법적 예외가 있습니다. 치료사가 이러한 제한에 대해 자세히 설명해 드릴 수 있습니다."
+  },
+  {
+    keywords: ['기록', '치료 기록', '기록 열람', '기록 접근'],
+    response: "언제든지 치료 기록을 검토하거나 요약을 요청할 권리가 있습니다. 기록은 캘리포니아 주법에 따라 최소 7년간 보관됩니다. 임상적으로 관련된 이메일, 문자, 팩스도 기록의 일부가 됩니다."
+  },
+  {
+    keywords: ['예약 취소', '놓친 세션', '결석', '예약 변경', '놓친 예약'],
+    response: "예약을 취소하려면 최소 48시간 전에 통보해야 합니다. 통보 없이 불참하면 결석으로 간주됩니다. 두 번째 결석 후에는 서비스가 중단될 수 있지만, 복귀 서한에 서명하면 다시 등록할 수 있습니다. 취소나 변경은 (877) 611-2272로 전화하세요."
+  },
+  {
+    keywords: ['보험 비밀보장', '보험 프라이버시', '보험 위험', '청구 프라이버시'],
+    response: "보험에 치료 청구를 제출하면 치료에 대한 제한된 정보가 보험사와 공유될 수 있습니다. Casa de la Familia는 최소한의 필요 정보만 공유합니다. 정신건강 청구 제출이 일정한 프라이버시 위험을 수반할 수 있다는 점을 알아두세요."
+  },
+  {
+    keywords: ['치료 종료', '치료 중단', '치료 그만두기'],
+    response: "언제든지 치료를 중단할 수 있습니다 - 그것은 당신의 권리입니다. 치료를 종료하기로 결정하면 치료사에게 알려서 함께 진행 상황을 검토하는 것이 좋습니다. 3회 연속 세션을 놓치거나 4주간 예약을 하지 않으면 휴식을 취한 것으로 간주됩니다. 준비가 되면 언제든지 돌아오실 수 있습니다."
+  },
+  {
+    keywords: ['법적 공개', '법원 기록', '소환장', '법원 명령'],
+    response: "치료 기록은 일반적으로 기밀이지만, 일부 경우 판사가 공개를 명령하거나 치료사에게 증언을 요구할 수 있습니다. 법적 공개가 발생하면 담당 임상의가 먼저 위험과 이점에 대해 논의하려고 할 것입니다."
   }
 ];
 
@@ -493,46 +537,10 @@ const detectCrisis = (text) => {
   return false;
 };
 
-// Function to find the best matching FAQ response
-const findKnowledgeResponse = (userInput) => {
-  const input = userInput.toLowerCase();
-  let bestMatch = null;
-  let highestScore = 0;
-
-  const combinedData = [...faqDataEn, ...kbKnowledge];
-
-  for (const item of combinedData) {
-    let score = 0;
-
-    for (const keyword of item.keywords) {
-      if (input.includes(keyword.toLowerCase())) {
-        score += keyword.length;
-      }
-    }
-
-    if (score > highestScore) {
-      highestScore = score;
-      bestMatch = item;
-    }
-  }
-
-  if (bestMatch) {
-    return bestMatch.response;
-  }
-
-  return null;
-};
-
 const findFaqResponse = (userInput) => {
-  const knowledgeResponse = findKnowledgeResponse(userInput);
-  if (knowledgeResponse) {
-    return knowledgeResponse;
-  }
-
   const input = userInput.toLowerCase();
   const detectedLang = detectLanguage(userInput);
 
-  // Select appropriate FAQ data based on language
   let faqData;
   let defaultResponse;
 
@@ -554,7 +562,7 @@ const findFaqResponse = (userInput) => {
     let score = 0;
     for (const keyword of faq.keywords) {
       if (input.includes(keyword.toLowerCase())) {
-        score += keyword.length; // Longer keyword matches are weighted higher
+        score += keyword.length;
       }
     }
     if (score > highestScore) {
@@ -567,7 +575,6 @@ const findFaqResponse = (userInput) => {
     return bestMatch.response;
   }
 
-  // Default response if no match found
   return defaultResponse;
 };
 
@@ -767,6 +774,12 @@ HOW TO RESPOND:
 - Remember people might be scared, confused, or hurting - meet them where they are
 - End with an open invitation to continue talking, not a formal sign-off
 
+ACCURACY RULES (VERY IMPORTANT):
+- When knowledge base snippets are provided, treat them as the authoritative source for policy/procedure answers
+- Do NOT make up specific numbers, timeframes, phone numbers, or policy details that are not in the snippets or this prompt
+- If the snippets do not contain enough information to answer fully, say so and suggest calling (877) 611-2272
+- Never contradict information from the knowledge base snippets
+
 WHAT NOT TO DO:
 - Don't use corporate/formal language like "I'd be happy to assist you with that"
 - Don't give long formatted lists unless specifically asked
@@ -774,6 +787,7 @@ WHAT NOT TO DO:
 - Don't repeat the phone number in every single response
 - Don't start every response with "Thank you for reaching out"
 - Don't sound like a chatbot - sound like a caring person
+- Don't invent policy details or specifics that are not provided in your context
 
 You're not a therapist - you're a friendly guide helping people find the right support at Casa de la Familia.`;
 

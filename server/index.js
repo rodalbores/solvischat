@@ -357,7 +357,7 @@ function retrieveTopChunks(query, chunks, topK = TOP_K, maxContextChars = MAX_CO
     .map((chunk) => ({
       chunk,
       ...scoreChunk(queryTokens, queryTextLower, chunk),
-    })
+    }))
     .sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
       if (b.weightedCoverage !== a.weightedCoverage) return b.weightedCoverage - a.weightedCoverage;
@@ -427,7 +427,13 @@ app.post('/api/chat', async (req, res) => {
     const combinedInstruction = [
       normalizedSystem,
       retrievedContext,
-      'Use retrieved snippets as the primary factual source. If relevant details are missing, say you do not have enough information and suggest contacting Casa de la Familia at (877) 611-2272.'
+      'RETRIEVAL INSTRUCTIONS:\n'
+      + '- The knowledge base snippets above contain official Casa de la Familia policy and procedural information.\n'
+      + '- When answering questions about therapy process, confidentiality, records, payments, emergencies, cancellations, or patient rights, use ONLY information from these snippets.\n'
+      + '- Do NOT invent or assume policy details that are not present in the snippets.\n'
+      + '- If a question asks about organizational info (services, programs, locations) not covered in the snippets, use the general information from your system prompt.\n'
+      + '- If you genuinely cannot answer from available information, say so honestly and suggest calling (877) 611-2272.\n'
+      + '- Paraphrase the snippet content naturally - do not quote it verbatim or reference snippet numbers.'
     ].filter(Boolean).join('\n\n');
 
     // Add system instruction and knowledge context as first user message if provided
